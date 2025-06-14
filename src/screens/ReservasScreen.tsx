@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
-import { LinearGradient } from 'expo-linear-gradient'; // Necesitarás instalar esto
 
 interface Reserva {
   id: string;
@@ -66,6 +65,8 @@ export default function ReservasScreen() {
   const [horaSeleccionada, setHoraSeleccionada] = useState("");
   const [personasSeleccionadas, setPersonasSeleccionadas] = useState(2);
   const [comentarios, setComentarios] = useState("");
+  const [mostrarCalendario, setMostrarCalendario] = useState(false);
+  const [mesActual, setMesActual] = useState(new Date());
   const { usuario } = useAuth();
 
   const getEstadoColor = (estado: string) => {
@@ -132,9 +133,57 @@ export default function ReservasScreen() {
     });
   };
 
+  // Funciones del calendario
+  const obtenerDiasDelMes = (fecha: Date) => {
+    const año = fecha.getFullYear();
+    const mes = fecha.getMonth();
+    const primerDia = new Date(año, mes, 1);
+    const ultimoDia = new Date(año, mes + 1, 0);
+    const diasEnMes = ultimoDia.getDate();
+    const diaSemanaInicio = primerDia.getDay(); // 0 = domingo
+    
+    const dias = [];
+    
+    // Añadir días vacíos al inicio
+    for (let i = 0; i < diaSemanaInicio; i++) {
+      dias.push(null);
+    }
+    
+    // Añadir todos los días del mes
+    for (let i = 1; i <= diasEnMes; i++) {
+      dias.push(new Date(año, mes, i));
+    }
+    
+    return dias;
+  };
+
+  const formatearFechaCalendario = (fecha: Date) => {
+    return fecha.toISOString().split('T')[0];
+  };
+
+  const esFechaHabilitada = (fecha: Date) => {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    return fecha >= hoy;
+  };
+
+  const seleccionarFecha = (fecha: Date) => {
+    setFechaSeleccionada(formatearFechaCalendario(fecha));
+    setMostrarCalendario(false);
+  };
+
+  const cambiarMes = (direccion: number) => {
+    setMesActual(prev => new Date(prev.getFullYear(), prev.getMonth() + direccion, 1));
+  };
+
+  const nombreMes = mesActual.toLocaleDateString("es-BO", { 
+    month: "long", 
+    year: "numeric" 
+  });
+
   const cancelarReserva = (id: string) => {
     Alert.alert(
-      "Cancelar Reserva",
+      "🚫 Cancelar Reserva",
       "¿Estás seguro de que deseas cancelar esta reserva?",
       [
         { text: "No", style: "cancel" },
@@ -150,7 +199,7 @@ export default function ReservasScreen() {
               )
             );
             Alert.alert(
-              "Reserva cancelada",
+              "✅ Reserva cancelada",
               "Tu reserva ha sido cancelada exitosamente"
             );
           },
@@ -161,7 +210,7 @@ export default function ReservasScreen() {
 
   const crearReserva = () => {
     if (!fechaSeleccionada || !horaSeleccionada) {
-      Alert.alert("Error", "Por favor selecciona fecha y hora para tu reserva");
+      Alert.alert("⚠️ Error", "Por favor selecciona fecha y hora para tu reserva");
       return;
     }
 
@@ -185,7 +234,7 @@ export default function ReservasScreen() {
     setComentarios("");
 
     Alert.alert(
-      "¡Reserva creada! 🎉",
+      "🎉 ¡Reserva creada!",
       "Tu reserva ha sido creada y está pendiente de confirmación"
     );
   };
@@ -197,7 +246,7 @@ export default function ReservasScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#37738F" />
       
-      {/* Header con gradiente mejorado */}
+      {/* Header estático mejorado */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.headerTextSection}>
@@ -221,8 +270,8 @@ export default function ReservasScreen() {
         </View>
       </View>
 
+      {/* ScrollView con el contenido */}
       <ScrollView 
-        style={styles.content} 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
@@ -244,7 +293,7 @@ export default function ReservasScreen() {
 
         {/* Lista de reservas mejorada */}
         <View style={styles.reservasContainer}>
-          <Text style={styles.sectionTitle}>Próximas Reservas</Text>
+          <Text style={styles.sectionTitle}>📅 Próximas Reservas</Text>
 
           {reservas.length === 0 ? (
             <View style={styles.emptyState}>
@@ -374,7 +423,7 @@ export default function ReservasScreen() {
         <View style={styles.infoContainer}>
           <View style={styles.infoHeader}>
             <MaterialIcons name="info" size={24} color="#61B1BA" />
-            <Text style={styles.infoTitle}>Información importante</Text>
+            <Text style={styles.infoTitle}>ℹ️ Información importante</Text>
           </View>
           
           <View style={styles.infoGrid}>
@@ -410,7 +459,7 @@ export default function ReservasScreen() {
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleContainer}>
                 <MaterialIcons name="event-available" size={24} color="#37738F" />
-                <Text style={styles.modalTitle}>Nueva Reserva</Text>
+                <Text style={styles.modalTitle}>📝 Nueva Reserva</Text>
               </View>
               <TouchableOpacity 
                 onPress={() => setModalVisible(false)}
@@ -421,22 +470,112 @@ export default function ReservasScreen() {
             </View>
 
             <ScrollView style={styles.modalForm} showsVerticalScrollIndicator={false}>
-              {/* Fecha mejorada */}
+              {/* Fecha con calendario mejorado */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>
                   <MaterialIcons name="calendar-today" size={16} color="#37738F" />
                   {" "}Fecha de la reserva
                 </Text>
-                <View style={styles.inputContainer}>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="YYYY-MM-DD (ej: 2025-06-15)"
-                    value={fechaSeleccionada}
-                    onChangeText={setFechaSeleccionada}
-                    placeholderTextColor="#999"
-                  />
-                  <MaterialIcons name="date-range" size={20} color="#61B1BA" />
-                </View>
+                
+                <TouchableOpacity 
+                  style={styles.fechaButton}
+                  onPress={() => setMostrarCalendario(true)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.fechaButtonContent}>
+                    <MaterialIcons name="date-range" size={20} color="#61B1BA" />
+                    <Text style={[
+                      styles.fechaButtonText,
+                      fechaSeleccionada && styles.fechaButtonTextSelected
+                    ]}>
+                      {fechaSeleccionada 
+                        ? formatearFecha(fechaSeleccionada)
+                        : "Seleccionar fecha"
+                      }
+                    </Text>
+                    <MaterialIcons name="expand-more" size={20} color="#61B1BA" />
+                  </View>
+                </TouchableOpacity>
+
+                {/* Modal del Calendario */}
+                <Modal
+                  visible={mostrarCalendario}
+                  transparent={true}
+                  animationType="fade"
+                  onRequestClose={() => setMostrarCalendario(false)}
+                >
+                  <View style={styles.calendarioOverlay}>
+                    <View style={styles.calendarioContainer}>
+                      {/* Header del calendario */}
+                      <View style={styles.calendarioHeader}>
+                        <TouchableOpacity 
+                          onPress={() => cambiarMes(-1)}
+                          style={styles.calendarioNavButton}
+                        >
+                          <MaterialIcons name="chevron-left" size={24} color="#37738F" />
+                        </TouchableOpacity>
+                        
+                        <Text style={styles.calendarioTitulo}>
+                          {nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1)}
+                        </Text>
+                        
+                        <TouchableOpacity 
+                          onPress={() => cambiarMes(1)}
+                          style={styles.calendarioNavButton}
+                        >
+                          <MaterialIcons name="chevron-right" size={24} color="#37738F" />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Días de la semana */}
+                      <View style={styles.diasSemanaContainer}>
+                        {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia) => (
+                          <Text key={dia} style={styles.diaSemanaLabel}>
+                            {dia}
+                          </Text>
+                        ))}
+                      </View>
+
+                      {/* Grid de días */}
+                      <View style={styles.diasGrid}>
+                        {obtenerDiasDelMes(mesActual).map((fecha, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={[
+                              styles.diaButton,
+                              !fecha && styles.diaVacio,
+                              fecha && !esFechaHabilitada(fecha) && styles.diaDeshabilitado,
+                              fecha && fechaSeleccionada === formatearFechaCalendario(fecha) && styles.diaSeleccionado
+                            ]}
+                            onPress={() => fecha && esFechaHabilitada(fecha) && seleccionarFecha(fecha)}
+                            disabled={!fecha || !esFechaHabilitada(fecha)}
+                            activeOpacity={0.7}
+                          >
+                            {fecha && (
+                              <Text style={[
+                                styles.diaTexto,
+                                !esFechaHabilitada(fecha) && styles.diaTextoDeshabilitado,
+                                fechaSeleccionada === formatearFechaCalendario(fecha) && styles.diaTextoSeleccionado
+                              ]}>
+                                {fecha.getDate()}
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+
+                      {/* Botones del calendario */}
+                      <View style={styles.calendarioActions}>
+                        <TouchableOpacity 
+                          style={styles.calendarioCancelButton}
+                          onPress={() => setMostrarCalendario(false)}
+                        >
+                          <Text style={styles.calendarioCancelText}>Cancelar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                </Modal>
               </View>
 
               {/* Hora mejorada */}
@@ -556,6 +695,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#EFEDD3",
   },
+  // 🔥 Header estático (fuera del ScrollView)
   header: {
     backgroundColor: "#37738F",
     paddingTop: 60,
@@ -609,11 +749,10 @@ const styles = StyleSheet.create({
     color: "#E8E6CD",
     marginTop: 2,
   },
-  content: {
-    flex: 1,
-  },
+  // 🔥 ScrollContent con padding superior aumentado
   scrollContent: {
     padding: 20,
+    paddingTop: 30, // 🔥 Espacio del header
     paddingBottom: 40,
   },
   nuevaReservaButton: {
@@ -1103,5 +1242,134 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#FFF",
     fontWeight: "bold",
+  },
+  
+  // Estilos del botón de fecha y calendario
+  fechaButton: {
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  fechaButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  fechaButtonText: {
+    fontSize: 15,
+    color: "#999",
+    flex: 1,
+    marginLeft: 12,
+  },
+  fechaButtonTextSelected: {
+    color: "#37738F",
+    fontWeight: "500",
+  },
+  
+  // Estilos del modal del calendario
+  calendarioOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  calendarioContainer: {
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    padding: 20,
+    width: "100%",
+    maxWidth: 350,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 15,
+  },
+  calendarioHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  calendarioNavButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "#F5F5F5",
+  },
+  calendarioTitulo: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#37738F",
+    textAlign: "center",
+    flex: 1,
+  },
+  diasSemanaContainer: {
+    flexDirection: "row",
+    marginBottom: 10,
+  },
+  diaSemanaLabel: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#666",
+    paddingVertical: 8,
+  },
+  diasGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  diaButton: {
+    width: "14.28%", // 100% / 7 días
+    aspectRatio: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginVertical: 2,
+  },
+  diaVacio: {
+    // Espacios vacíos para completar semanas
+  },
+  diaDeshabilitado: {
+    opacity: 0.3,
+  },
+  diaSeleccionado: {
+    backgroundColor: "#37738F",
+    borderRadius: 20,
+  },
+  diaTexto: {
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "500",
+  },
+  diaTextoDeshabilitado: {
+    color: "#CCC",
+  },
+  diaTextoSeleccionado: {
+    color: "#FFF",
+    fontWeight: "bold",
+  },
+  calendarioActions: {
+    marginTop: 20,
+    alignItems: "center",
+  },
+  calendarioCancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 20,
+  },
+  calendarioCancelText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
   },
 });

@@ -9,6 +9,7 @@ import {
   Image,
   Alert,
   StatusBar,
+  Modal,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
@@ -194,6 +195,89 @@ export default function MenuScreen() {
     postres: null as PlatoMenu | null,
   });
 
+  // Estados para el modal de confirmación mejorado
+  const [modalConfirmacion, setModalConfirmacion] = useState(false);
+  const [platoParaConfirmar, setPlatoParaConfirmar] = useState<PlatoMenu | null>(null);
+  const [modalidadSeleccionada, setModalidadSeleccionada] = useState("");
+  const [tipoConfirmacion, setTipoConfirmacion] = useState<"menu-personalizado" | "menu-basico" | "plato-individual" | "extra">("menu-basico");
+
+  // Modalidades de servicio
+  const modalidadesServicio = [
+    {
+      id: "restaurante",
+      nombre: "Comer en Restaurante",
+      icono: "restaurant",
+      descripcion: "Mesa disponible en 15 min",
+      tiempo: "15 min",
+      costoExtra: 0,
+      emoji: "🏠"
+    },
+    {
+      id: "llevar", 
+      nombre: "Para Llevar",
+      icono: "takeout-dining",
+      descripcion: "Listo para recoger en 20 min",
+      tiempo: "20 min", 
+      costoExtra: 0,
+      emoji: "🥡"
+    },
+    {
+      id: "delivery",
+      nombre: "Delivery a Domicilio", 
+      icono: "delivery-dining",
+      descripcion: "Entrega en 45-60 min",
+      tiempo: "45-60 min",
+      costoExtra: 8,
+      emoji: "🚚"
+    }
+  ];
+
+  // Función para abrir modal de confirmación
+  const abrirModalConfirmacion = (plato: PlatoMenu, tipo: typeof tipoConfirmacion) => {
+    setPlatoParaConfirmar(plato);
+    setTipoConfirmacion(tipo);
+    setModalidadSeleccionada("");
+    setModalConfirmacion(true);
+  };
+
+  // Función para confirmar el pedido con modalidad
+  const confirmarPedidoConModalidad = () => {
+    if (!modalidadSeleccionada) {
+      Alert.alert("Error", "Por favor selecciona una modalidad de servicio");
+      return;
+    }
+
+    const modalidad = modalidadesServicio.find(m => m.id === modalidadSeleccionada);
+    const costoTotal = modalidad?.costoExtra || 0;
+    
+    let mensajeConfirmacion = "";
+    
+    switch (tipoConfirmacion) {
+      case "menu-personalizado":
+        mensajeConfirmacion = `¡Menú Personalizado Confirmado! 🎉\n\n${modalidad?.emoji} ${modalidad?.nombre}\n⏰ ${modalidad?.descripcion}${costoTotal > 0 ? `\n💰 Costo adicional: ${costoTotal} Bs` : ""}`;
+        // Limpiar selección para permitir crear un nuevo menú
+        setMenuPersonalizado({
+          sopas: null,
+          segundos: null,
+          postres: null,
+        });
+        break;
+      case "menu-basico":
+        mensajeConfirmacion = `¡Menú del Día Confirmado! 🎉\n\n${modalidad?.emoji} ${modalidad?.nombre}\n⏰ ${modalidad?.descripcion}${costoTotal > 0 ? `\n💰 Costo adicional: ${costoTotal} Bs` : ""}`;
+        break;
+      case "plato-individual":
+        mensajeConfirmacion = `¡${platoParaConfirmar?.nombre} Confirmado! 🎉\n\n${modalidad?.emoji} ${modalidad?.nombre}\n⏰ ${modalidad?.descripcion}${costoTotal > 0 ? `\n💰 Costo adicional: ${costoTotal} Bs` : ""}`;
+        break;
+      case "extra":
+        const costoTotalExtra = (platoParaConfirmar?.precio || 0) + costoTotal;
+        mensajeConfirmacion = `¡${platoParaConfirmar?.nombre} Confirmado! 🎉\n\n${modalidad?.emoji} ${modalidad?.nombre}\n⏰ ${modalidad?.descripcion}\n💰 Costo total: ${costoTotalExtra} Bs`;
+        break;
+    }
+
+    setModalConfirmacion(false);
+    Alert.alert("Pedido Confirmado", mensajeConfirmacion);
+  };
+
   const platosFiltrados = platosMenu.filter(
     (plato) =>
       categoriaSeleccionada === "todos" ||
@@ -300,90 +384,23 @@ export default function MenuScreen() {
     if (["sopas", "segundos", "postres"].includes(plato.categoria)) {
       seleccionarComponenteMenu(plato);
       return;
-    }
-
-    if (plato.precio === 0) {
+    }    if (plato.precio === 0) {
       // Es parte del menú incluido
       if (plato.categoria === "menu-completo") {
         if (plato.id === "menu-personalizado") {
           // Confirmar el menú personalizado
-          Alert.alert(
-            "Confirmar Mi Menú Personalizado",
-            `¿Deseas ordenar tu menú personalizado?\n\n🍲 ${menuPersonalizado.sopas?.nombre}\n🍽️ ${menuPersonalizado.segundos?.nombre}\n🍰 ${menuPersonalizado.postres?.nombre}\n\nSe descontará 1 menú de tu saldo disponible.`,
-            [
-              { text: "Cancelar", style: "cancel" },
-              {
-                text: "Confirmar",
-                onPress: () => {
-                  Alert.alert(
-                    "¡Menú Confirmado! 🎉",
-                    "Tu menú personalizado ha sido ordenado exitosamente."
-                  );
-                  // Limpiar selección para permitir crear un nuevo menú
-                  setMenuPersonalizado({
-                    sopas: null,
-                    segundos: null,
-                    postres: null,
-                  });
-                },
-              },
-            ]
-          );
+          abrirModalConfirmacion(plato, "menu-personalizado");
         } else {
           // Menú básico del día
-          Alert.alert(
-            "Confirmar Menú del Día",
-            `¿Deseas ordenar el menú completo?\n\nEsto incluye:\n• 1 Sopa a elegir\n• 1 Segundo a elegir\n• 1 Postre a elegir\n\nSe descontará 1 menú de tu saldo disponible.`,
-            [
-              { text: "Cancelar", style: "cancel" },
-              {
-                text: "Confirmar",
-                onPress: () => {
-                  Alert.alert(
-                    "Menú confirmado",
-                    "Tu menú del día ha sido ordenado. Ahora puedes elegir tus platos específicos."
-                  );
-                },
-              },
-            ]
-          );
+          abrirModalConfirmacion(plato, "menu-basico");
         }
       } else {
-        Alert.alert(
-          "Seleccionar plato",
-          `¿Deseas elegir ${plato.nombre}?\n\nEste plato es parte de tu menú del día incluido.`,
-          [
-            { text: "Cancelar", style: "cancel" },
-            {
-              text: "Elegir",
-              onPress: () => {
-                Alert.alert(
-                  "Plato seleccionado",
-                  `${plato.nombre} ha sido agregado a tu menú.`
-                );
-              },
-            },
-          ]
-        );
+        // Plato individual incluido
+        abrirModalConfirmacion(plato, "plato-individual");
       }
     } else {
       // Es un extra con costo adicional
-      Alert.alert(
-        "Confirmar Extra",
-        `¿Deseas agregar ${plato.nombre}?\n\n💰 Costo adicional: Bs. ${plato.precio}\n\nEste plato tiene un costo extra y se cobrará por separado.`,
-        [
-          { text: "Cancelar", style: "cancel" },
-          {
-            text: "Agregar Extra",
-            onPress: () => {
-              Alert.alert(
-                "Extra agregado",
-                `${plato.nombre} ha sido agregado como extra por Bs. ${plato.precio}`
-              );
-            },
-          },
-        ]
-      );
+      abrirModalConfirmacion(plato, "extra");
     }
   };
 
@@ -654,13 +671,129 @@ export default function MenuScreen() {
         <View style={styles.platosContainer}>
           <FlatList
             data={platosParaMostrar}
-            renderItem={renderPlato}
-            keyExtractor={(item) => item.id}
+            renderItem={renderPlato}            keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             scrollEnabled={false} // Deshabilitado porque está dentro del ScrollView principal
           />
         </View>
       </ScrollView>
+
+      {/* Modal de confirmación con modalidades de servicio */}
+      <Modal
+        visible={modalConfirmacion}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setModalConfirmacion(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Header del Modal */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleContainer}>
+                <Text style={styles.modalEmoji}>
+                  {tipoConfirmacion === "menu-personalizado" ? "🎯" : 
+                   tipoConfirmacion === "menu-basico" ? "🍽️" : 
+                   tipoConfirmacion === "extra" ? "➕" : "🍽️"}
+                </Text>
+                <View>
+                  <Text style={styles.modalTitle}>
+                    {tipoConfirmacion === "menu-personalizado" ? "Confirmar Mi Menú Personalizado" :
+                     tipoConfirmacion === "menu-basico" ? "Confirmar Menú del Día" :
+                     tipoConfirmacion === "extra" ? `Agregar ${platoParaConfirmar?.nombre}` :
+                     `Seleccionar ${platoParaConfirmar?.nombre}`}
+                  </Text>
+                  <Text style={styles.modalSubtitle}>
+                    {tipoConfirmacion === "menu-personalizado" ? 
+                      `${menuPersonalizado.sopas?.nombre} + ${menuPersonalizado.segundos?.nombre} + ${menuPersonalizado.postres?.nombre}` :
+                     tipoConfirmacion === "menu-basico" ? "1 Sopa + 1 Segundo + 1 Postre" :
+                     tipoConfirmacion === "extra" ? `Costo: Bs. ${platoParaConfirmar?.precio}` :
+                     "Incluido en tu menú del día"}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity 
+                onPress={() => setModalConfirmacion(false)}
+                style={styles.modalCloseButton}
+              >
+                <MaterialIcons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Modalidades de Servicio */}
+            <View style={styles.modalidadesContainer}>
+              <Text style={styles.modalidadesTitle}>¿Cómo deseas tu pedido?</Text>
+              
+              {modalidadesServicio.map((modalidad) => (
+                <TouchableOpacity
+                  key={modalidad.id}
+                  style={[
+                    styles.modalidadCard,
+                    modalidadSeleccionada === modalidad.id && styles.modalidadSeleccionada
+                  ]}
+                  onPress={() => setModalidadSeleccionada(modalidad.id)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.modalidadIconContainer}>
+                    <Text style={styles.modalidadEmoji}>{modalidad.emoji}</Text>
+                    <MaterialIcons 
+                      name={modalidad.icono as any} 
+                      size={24} 
+                      color={modalidadSeleccionada === modalidad.id ? "#37738F" : "#666"} 
+                    />
+                  </View>
+                  
+                  <View style={styles.modalidadInfo}>
+                    <Text style={[
+                      styles.modalidadNombre,
+                      modalidadSeleccionada === modalidad.id && styles.modalidadNombreSeleccionada
+                    ]}>
+                      {modalidad.nombre}
+                    </Text>
+                    <Text style={styles.modalidadDescripcion}>
+                      {modalidad.descripcion}
+                    </Text>
+                    {modalidad.costoExtra > 0 && (
+                      <Text style={styles.modalidadCosto}>
+                        + Bs. {modalidad.costoExtra}
+                      </Text>
+                    )}
+                  </View>
+                  
+                  <View style={styles.modalidadCheckContainer}>
+                    <MaterialIcons 
+                      name={modalidadSeleccionada === modalidad.id ? "radio-button-checked" : "radio-button-unchecked"} 
+                      size={24} 
+                      color={modalidadSeleccionada === modalidad.id ? "#37738F" : "#CCC"} 
+                    />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Botones de Acción */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={styles.modalCancelButton}
+                onPress={() => setModalConfirmacion(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.modalConfirmButton,
+                  !modalidadSeleccionada && styles.modalConfirmButtonDisabled
+                ]}
+                onPress={confirmarPedidoConModalidad}
+                disabled={!modalidadSeleccionada}
+              >
+                <MaterialIcons name="check" size={20} color="#FFF" />
+                <Text style={styles.modalConfirmText}>Confirmar Pedido</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1012,11 +1145,166 @@ const styles = StyleSheet.create({
   },
   progresoItemCompleto: {
     opacity: 1,
-  },
-  progresoTexto: {
+  },  progresoTexto: {
     fontSize: 12,
     color: "#FFE0D1",
     marginLeft: 4,
     flex: 1,
+  },
+  
+  // Estilos del Modal de Confirmación
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    padding: 0,
+    width: "100%",
+    maxWidth: 400,
+    maxHeight: "80%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 15,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  modalTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  modalEmoji: {
+    fontSize: 32,
+    marginRight: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#37738F",
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: "#5F98A6",
+    lineHeight: 18,
+  },
+  modalCloseButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "#F5F5F5",
+  },
+  modalidadesContainer: {
+    padding: 20,
+  },
+  modalidadesTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#37738F",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  modalidadCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8F9FA",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  modalidadSeleccionada: {
+    backgroundColor: "#E8F4FD",
+    borderColor: "#37738F",
+  },
+  modalidadIconContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  modalidadEmoji: {
+    fontSize: 24,
+    marginRight: 8,
+  },
+  modalidadInfo: {
+    flex: 1,
+  },
+  modalidadNombre: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 4,
+  },
+  modalidadNombreSeleccionada: {
+    color: "#37738F",
+  },
+  modalidadDescripcion: {
+    fontSize: 13,
+    color: "#666",
+    lineHeight: 18,
+  },
+  modalidadCosto: {
+    fontSize: 12,
+    color: "#D47877",
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  modalidadCheckContainer: {
+    marginLeft: 12,
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: "#F5F5F5",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  modalCancelText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+  },
+  modalConfirmButton: {
+    flex: 2,
+    backgroundColor: "#37738F",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+  },
+  modalConfirmButtonDisabled: {
+    backgroundColor: "#CCC",
+  },
+  modalConfirmText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFF",
   },
 });
