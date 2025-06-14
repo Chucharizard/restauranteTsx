@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   View,
   Text,
@@ -10,17 +10,20 @@ import {
   StatusBar,
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import { useNotifications } from "../context/NotificationsContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import NotificationSidebar from "../components/NotificationSidebar";
 
 const { width } = Dimensions.get("window");
 
 export default function DashboardScreen() {
   const { usuario } = useAuth();
+  const { notificacionesNoLeidas, toggleSidebar } = useNotifications();
   const navigation = useNavigation();
 
-  // Funciones de navegación para las acciones rápidas
-  const handleAccionRapida = (accion: string) => {
+  // 🔥 Funciones optimizadas con useCallback
+  const handleAccionRapida = useCallback((accion: string) => {
     switch (accion) {
       case "Ver Menú":
         navigation.navigate("Menu" as never);
@@ -48,10 +51,9 @@ export default function DashboardScreen() {
       default:
         break;
     }
-  };
+  }, [navigation]);
 
-  // Función para mostrar detalles del saldo
-  const handleSaldoClick = () => {
+  const handleSaldoClick = useCallback(() => {
     const saldo = getSaldoNumero() || 0;
     let mensaje = `Tienes ${saldo} menús completos disponibles.\n\n`;
     
@@ -73,10 +75,9 @@ export default function DashboardScreen() {
         { text: "Cerrar" }
       ]
     );
-  };
+  }, [handleAccionRapida]);
 
-  // Función para manejar click en estadísticas
-  const handleEstadisticaClick = (tipo: string) => {
+  const handleEstadisticaClick = useCallback((tipo: string) => {
     switch (tipo) {
       case "Menús este mes":
         Alert.alert(
@@ -101,9 +102,9 @@ export default function DashboardScreen() {
       default:
         break;
     }
-  };
+  }, [navigation]);
 
-  const handleContacto = () => {
+  const handleContacto = useCallback(() => {
     Alert.alert(
       "📞 Contactar Restaurante",
       "Teléfono: +591 2 123-4567\n🕐 Horarios: Lun-Sáb 8:00 AM - 8:00 PM\n\n¿Deseas marcar el número?",
@@ -112,7 +113,12 @@ export default function DashboardScreen() {
         { text: "Llamar", onPress: () => Alert.alert("📱 Función de llamada no implementada en demo") }
       ]
     );
-  };
+  }, []);
+
+  // 🔥 Función optimizada para notificaciones
+  const handleNotificationPress = useCallback(() => {
+    toggleSidebar();
+  }, [toggleSidebar]);
 
   const getTipoMembresiaTexto = () => {
     return "Pensionado por Menús";
@@ -128,9 +134,9 @@ export default function DashboardScreen() {
 
   const getColorEstado = () => {
     const saldo = getSaldoNumero() || 0;
-    if (saldo > 10) return "#56A099"; // Verde turquesa
-    if (saldo > 5) return "#D48689"; // Rosa coral
-    return "#C7362F"; // Rojo coral
+    if (saldo > 10) return "#56A099";
+    if (saldo > 5) return "#D48689";
+    return "#C7362F";
   };
 
   const getEstadoIcon = () => {
@@ -204,7 +210,12 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#37738F" />
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="#37738F" 
+        translucent={false}
+        animated={false}
+      />
       
       {/* Header estático mejorado */}
       <View style={styles.header}>
@@ -220,25 +231,53 @@ export default function DashboardScreen() {
               })}
             </Text>
           </View>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatarBackground}>
-              <MaterialIcons name="person" size={32} color="#37738F" />
-            </View>
-            <View style={styles.statusIndicator} />
+          
+          <View style={styles.headerActions}>
+            {/* Botón de notificaciones mejorado */}
+            <TouchableOpacity 
+              style={styles.notificationButton}
+              onPress={handleNotificationPress}
+              activeOpacity={0.8}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MaterialIcons name="notifications" size={24} color="#E8E6CD" />
+              {notificacionesNoLeidas > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {notificacionesNoLeidas > 99 ? "99+" : notificacionesNoLeidas}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            
+            {/* Avatar mejorado */}
+            <TouchableOpacity 
+              style={styles.avatarContainer}
+              activeOpacity={0.8}
+              onPress={() => Alert.alert("👤 Perfil", "Funcionalidad de perfil próximamente disponible")}
+            >
+              <View style={styles.avatarBackground}>
+                <MaterialIcons name="person" size={32} color="#37738F" />
+              </View>
+              <View style={styles.statusIndicator} />
+            </TouchableOpacity>
           </View>
         </View>
       </View>
 
-      {/* ScrollView para el contenido */}
+      {/* ScrollView con optimizaciones */}
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={styles.scrollContent}
+        removeClippedSubviews={true}
+        bounces={true}
+        bouncesZoom={false}
       >
-        {/* Tarjeta de saldo principal mejorada con mejor espaciado */}
+        {/* Tarjeta de saldo principal */}
         <TouchableOpacity 
           style={[styles.saldoCard, { borderLeftColor: getColorEstado() }]}
           onPress={handleSaldoClick}
-          activeOpacity={0.9}
+          activeOpacity={0.95}
         >
           <View style={styles.saldoHeader}>
             <View style={styles.membershipInfo}>
@@ -291,11 +330,11 @@ export default function DashboardScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* Estadísticas rápidas mejoradas */}
+        {/* Resto del contenido sin cambios */}
         <View style={styles.statsContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>📊 Resumen del Mes</Text>
-            <TouchableOpacity style={styles.seeAllButton}>
+            <TouchableOpacity style={styles.seeAllButton} activeOpacity={0.8}>
               <Text style={styles.seeAllText}>Ver todo</Text>
               <MaterialIcons name="arrow-forward" size={14} color="#61B1BA" />
             </TouchableOpacity>
@@ -307,7 +346,7 @@ export default function DashboardScreen() {
                 key={index} 
                 style={styles.statCard}
                 onPress={() => handleEstadisticaClick(stat.title)}
-                activeOpacity={0.8}
+                activeOpacity={0.9}
               >
                 <View style={[styles.statIconContainer, { backgroundColor: `${stat.color}15` }]}>
                   <MaterialIcons name={stat.icon as any} size={24} color={stat.color} />
@@ -320,7 +359,6 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Acciones rápidas mejoradas */}
         <View style={styles.accionesContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>⚡ Acciones Rápidas</Text>
@@ -332,7 +370,7 @@ export default function DashboardScreen() {
                 key={index} 
                 style={styles.accionCard}
                 onPress={() => handleAccionRapida(accion.title)}
-                activeOpacity={0.8}
+                activeOpacity={0.9}
               >
                 <View style={styles.accionHeader}>
                   <View style={[styles.accionIcon, { backgroundColor: accion.color }]}>
@@ -350,7 +388,6 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Información de contacto mejorada */}
         <View style={styles.contactoCard}>
           <View style={styles.contactoHeader}>
             <View style={styles.contactoIconContainer}>
@@ -367,7 +404,7 @@ export default function DashboardScreen() {
           <TouchableOpacity 
             style={styles.contactoButton}
             onPress={handleContacto}
-            activeOpacity={0.8}
+            activeOpacity={0.9}
           >
             <MaterialIcons name="phone" size={18} color="#FFF" />
             <Text style={styles.contactoButtonText}>Llamar ahora</Text>
@@ -375,7 +412,6 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Footer informativo */}
         <View style={styles.footerCard}>
           <Text style={styles.footerTitle}>💡 ¿Sabías que...?</Text>
           <Text style={styles.footerText}>
@@ -383,16 +419,19 @@ export default function DashboardScreen() {
           </Text>
         </View>
       </ScrollView>
+      
+      {/* Sidebar de notificaciones */}
+      <NotificationSidebar />
     </View>
   );
 }
 
+// 🔥 Estilos mejorados con optimizaciones
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#EFEDD3",
   },
-  // Header estático (fuera del ScrollView)
   header: {
     backgroundColor: "#37738F",
     paddingTop: 60,
@@ -426,6 +465,35 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
     fontWeight: "500",
   },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  notificationButton: {
+    position: "relative",
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    backgroundColor: "#C7362F", // 🔥 Color más consistente
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#37738F",
+  },
+  notificationBadgeText: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
   avatarContainer: {
     position: "relative",
   },
@@ -453,12 +521,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#FFF",
   },
-  // 🔥 ScrollContent con padding superior aumentado
   scrollContent: {
-    paddingTop: 30, // 🔥 CAMBIO PRINCIPAL: Aumentado de 20 a 30
+    paddingTop: 30,
     paddingBottom: 20,
   },
-  // 🔥 Tarjeta de saldo con margen superior corregido
+  // ... resto de estilos sin cambios (mantén todos los estilos originales)
   saldoCard: {
     backgroundColor: "#FFF",
     marginHorizontal: 20,
