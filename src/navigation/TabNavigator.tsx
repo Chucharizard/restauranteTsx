@@ -1,6 +1,7 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useTheme } from "../context/ThemeContext";
 import DashboardScreen from "../screens/DashboardScreen";
 import MenuScreen from "../screens/MenuScreen";
 import ReservasScreen from "../screens/ReservasScreen";
@@ -9,6 +10,8 @@ import PerfilScreen from "../screens/PerfilScreen";
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
+  const { theme } = useTheme();
+  
   return (
     <Tab.Navigator
       id={undefined}
@@ -36,12 +39,13 @@ export default function TabNavigator() {
           return (
             <MaterialIcons name={iconName as any} size={size} color={color} />
           );
-        },        tabBarActiveTintColor: "#37738F", // Azul principal de la paleta
-        tabBarInactiveTintColor: "#C79591", // Rojo/naranja suave
+        },
+        tabBarActiveTintColor: theme.primary, // Color principal del theme
+        tabBarInactiveTintColor: theme.textMuted, // Color secundario del theme
         tabBarStyle: {
-          backgroundColor: "#EFEDD3", // Beige claro
+          backgroundColor: theme.card, // Fondo dinámico
           borderTopWidth: 1,
-          borderTopColor: "#E8DAC2", // Beige más oscuro
+          borderTopColor: theme.border, // Borde dinámico
           paddingVertical: 8,
           height: 70,
         },

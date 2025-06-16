@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationsContext";
+import { useTheme } from "../context/ThemeContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import NotificationSidebar from "../components/NotificationSidebar";
@@ -20,7 +21,11 @@ const { width } = Dimensions.get("window");
 export default function DashboardScreen() {
   const { usuario } = useAuth();
   const { notificacionesNoLeidas, toggleSidebar } = useNotifications();
+  const { theme, isDarkMode } = useTheme();
   const navigation = useNavigation();
+
+  // Generar estilos dinámicos basados en el tema
+  const styles = createStyles(theme);
 
   // 🔥 Funciones optimizadas con useCallback
   const handleAccionRapida = useCallback((accion: string) => {
@@ -207,14 +212,13 @@ export default function DashboardScreen() {
     if (hora < 18) return "Buenas tardes";
     return "Buenas noches";
   };
-
   return (
     <View style={styles.container}>
       <StatusBar 
-        barStyle="light-content" 
-        backgroundColor="#37738F" 
+        barStyle={isDarkMode ? "light-content" : "light-content"} 
+        backgroundColor={theme.primary} 
         translucent={false}
-        animated={false}
+        animated={true}
       />
       
       {/* Header estático mejorado */}
@@ -426,20 +430,20 @@ export default function DashboardScreen() {
   );
 }
 
-// 🔥 Estilos mejorados con optimizaciones
-const styles = StyleSheet.create({
+// 🔥 Función para generar estilos dinámicos basados en el tema
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#EFEDD3",
+    backgroundColor: theme.background,
   },
   header: {
-    backgroundColor: "#37738F",
+    backgroundColor: theme.primary,
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 30,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
-    shadowColor: "#37738F",
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -456,12 +460,12 @@ const styles = StyleSheet.create({
   saludo: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#FFF",
+    color: theme.textInverse,
     marginBottom: 4,
   },
   fechaHoy: {
     fontSize: 14,
-    color: "#E8E6CD",
+    color: theme.surface,
     textTransform: "capitalize",
     fontWeight: "500",
   },
@@ -480,17 +484,17 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 2,
     right: 2,
-    backgroundColor: "#C7362F", // 🔥 Color más consistente
+    backgroundColor: theme.error,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#37738F",
+    borderColor: theme.primary,
   },
   notificationBadgeText: {
-    color: "#FFF",
+    color: theme.textInverse,
     fontSize: 10,
     fontWeight: "bold",
   },
@@ -501,7 +505,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
@@ -517,17 +521,16 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: "#56A099",
+    backgroundColor: theme.success,
     borderWidth: 2,
-    borderColor: "#FFF",
+    borderColor: theme.card,
   },
   scrollContent: {
     paddingTop: 30,
     paddingBottom: 20,
   },
-  // ... resto de estilos sin cambios (mantén todos los estilos originales)
   saldoCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card,
     marginHorizontal: 20,
     marginBottom: 20,
     borderRadius: 16,
@@ -551,7 +554,7 @@ const styles = StyleSheet.create({
   membershipBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F0F8FF",
+    backgroundColor: theme.surface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -562,18 +565,18 @@ const styles = StyleSheet.create({
   tipoMembresia: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.primary,
   },
   estadoTexto: {
     fontSize: 13,
-    color: "#5F98A6",
+    color: theme.textSecondary,
     fontWeight: "500",
   },
   walletIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: theme.surface,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -591,13 +594,14 @@ const styles = StyleSheet.create({
     fontSize: 56,
     fontWeight: "bold",
     lineHeight: 56,
+    color: theme.text,
   },
   walletIcon: {
     opacity: 0.8,
   },
   saldoTexto: {
     fontSize: 16,
-    color: "#666",
+    color: theme.textMuted,
     textAlign: "center",
     fontWeight: "500",
   },
@@ -606,7 +610,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 8,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: theme.separator,
     borderRadius: 4,
     overflow: "hidden",
   },
@@ -622,7 +626,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 12,
-    color: "#666",
+    color: theme.textMuted,
     fontWeight: "500",
   },
   statsContainer: {
@@ -638,7 +642,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
   },
   seeAllButton: {
     flexDirection: "row",
@@ -647,7 +651,7 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: 14,
-    color: "#61B1BA",
+    color: theme.secondary,
     fontWeight: "600",
   },
   statsGrid: {
@@ -656,7 +660,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   statCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card,
     flex: 1,
     padding: 16,
     borderRadius: 12,
@@ -678,19 +682,19 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
+    color: theme.text,
     marginBottom: 4,
     textAlign: "center",
   },
   statTitle: {
     fontSize: 11,
-    color: "#666",
+    color: theme.textMuted,
     textAlign: "center",
     fontWeight: "600",
   },
   statSubtitle: {
     fontSize: 10,
-    color: "#999",
+    color: theme.textMuted,
     textAlign: "center",
     marginTop: 2,
   },
@@ -705,7 +709,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   accionCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card,
     width: (width - 52) / 2,
     padding: 16,
     borderRadius: 16,
@@ -734,12 +738,12 @@ const styles = StyleSheet.create({
   accionTitle: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#333",
+    color: theme.text,
     marginBottom: 4,
   },
   accionSubtitle: {
     fontSize: 12,
-    color: "#666",
+    color: theme.textMuted,
     lineHeight: 16,
     marginBottom: 12,
   },
@@ -747,7 +751,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   contactoCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card,
     margin: 20,
     marginTop: 0,
     padding: 20,
@@ -768,7 +772,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F0F8FF",
+    backgroundColor: theme.surface,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -778,51 +782,51 @@ const styles = StyleSheet.create({
   contactoTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#333",
+    color: theme.text,
     marginBottom: 4,
   },
   contactoTexto: {
     fontSize: 14,
-    color: "#666",
+    color: theme.textMuted,
     lineHeight: 20,
   },
   contactoButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#61B1BA",
+    backgroundColor: theme.secondary,
     paddingVertical: 12,
     borderRadius: 25,
     gap: 8,
-    shadowColor: "#61B1BA",
+    shadowColor: theme.secondary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 4,
   },
   contactoButtonText: {
-    color: "#FFF",
+    color: theme.textInverse,
     fontWeight: "bold",
     fontSize: 16,
   },
   footerCard: {
-    backgroundColor: "#F0F8FF",
+    backgroundColor: theme.surface,
     margin: 20,
     marginTop: 0,
     padding: 16,
     borderRadius: 12,
     borderLeftWidth: 4,
-    borderLeftColor: "#61B1BA",
+    borderLeftColor: theme.secondary,
   },
   footerTitle: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
     marginBottom: 6,
   },
   footerText: {
     fontSize: 13,
-    color: "#5F98A6",
+    color: theme.textSecondary,
     lineHeight: 18,
   },
 });

@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 interface PlatoMenu {
   id: string;
@@ -187,6 +188,10 @@ const platosMenu: PlatoMenu[] = [
 export default function MenuScreen() {
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todos");
   const { usuario } = useAuth();
+  const { theme, isDarkMode } = useTheme();
+
+  // Generar estilos dinámicos basados en el tema
+  const styles = createStyles(theme);
 
   // Estado para el menú personalizado
   const [menuPersonalizado, setMenuPersonalizado] = useState({
@@ -798,20 +803,20 @@ export default function MenuScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// 🔥 Función para generar estilos dinámicos basados en el tema
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#EFEDD3",
+    backgroundColor: theme.background,
   },
   // 🔥 Header estático (fuera del ScrollView)
   header: {
-    backgroundColor: "#37738F",
+    backgroundColor: theme.primary,
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 24,
+    paddingTop: 60,    paddingBottom: 24,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
-    shadowColor: "#37738F",
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -836,21 +841,20 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#FFF",
+    color: theme.textInverse,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: "#E8E6CD",
+    color: theme.surface,
     fontWeight: "500",
   },
   // 🔥 ScrollContent con padding superior aumentado
   scrollContent: {
     paddingTop: 20, // 🔥 Espacio del header
-  },
-  // 🔥 Categorías más pequeñas y compactas
+  },  // 🔥 Categorías más pequeñas y compactas
   categoriasSection: {
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card,
     paddingVertical: 16, // 🔥 Reducido de 20 a 16
     marginHorizontal: 20,
     borderRadius: 16,
@@ -864,16 +868,15 @@ const styles = StyleSheet.create({
   categoriasSectionTitle: {
     fontSize: 18, // 🔥 Reducido de 20 a 18
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
     marginBottom: 4,
   },
   categoriasSectionHeader: {
     marginHorizontal: 16, // 🔥 Reducido de 20 a 16
     marginBottom: 12, // 🔥 Reducido de 16 a 12
-  },
-  instruccionesTexto: {
+  },  instruccionesTexto: {
     fontSize: 13, // 🔥 Reducido de 14 a 13
-    color: "#5F98A6",
+    color: theme.textSecondary,
     fontStyle: "italic",
     marginTop: 4,
   },
@@ -930,9 +933,8 @@ const styles = StyleSheet.create({
   platosContainer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  platoCard: {
-    backgroundColor: "#FFF",
+  },  platoCard: {
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -1079,15 +1081,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
     gap: 6,
-  },
-  ingredientesTitle: {
+  },  ingredientesTitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#333",
+    color: theme.text,
   },
   ingredientesText: {
     fontSize: 13,
-    color: "#666",
+    color: theme.textMuted,
     lineHeight: 18,
   },
   noDisponibleOverlay: {
@@ -1159,9 +1160,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-  },
-  modalContainer: {
-    backgroundColor: "#FFF",
+  },  modalContainer: {
+    backgroundColor: theme.card,
     borderRadius: 20,
     padding: 0,
     width: "100%",

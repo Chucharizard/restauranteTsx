@@ -13,11 +13,15 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth, UsuarioPensionado } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
+import { ThemeToggle } from "../components/ThemeToggle";
 
 const { width } = Dimensions.get("window");
 
 export default function PerfilScreen() {
   const { usuario, logout, updateUsuario } = useAuth();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const [modalEditarVisible, setModalEditarVisible] = useState(false);
   const [usuarioEditado, setUsuarioEditado] =
     useState<UsuarioPensionado | null>(null);
@@ -75,9 +79,16 @@ export default function PerfilScreen() {
       year: "numeric",
     });
   };
-
   const handleOpcionClick = (opcionId: string) => {
     switch (opcionId) {
+      case "tema":
+        // Mostrar modal con el toggle del tema
+        Alert.alert(
+          "🎨 Configuración de Tema",
+          "Puedes cambiar entre modo claro y oscuro desde la sección de configuración.",
+          [{ text: "Entendido" }]
+        );
+        break;
       case "notificaciones":
         Alert.alert(
           "🔔 Notificaciones",
@@ -111,8 +122,15 @@ export default function PerfilScreen() {
         break;
     }
   };
-
   const opcionesConfiguracion = [
+    {
+      id: "tema",
+      titulo: "Tema de la App",
+      subtitulo: "Cambiar entre modo claro y oscuro",
+      icono: "palette",
+      color: "#8A2BE2",
+      emoji: "🎨",
+    },
     {
       id: "notificaciones",
       titulo: "Notificaciones",
@@ -154,22 +172,23 @@ export default function PerfilScreen() {
     if (saldo > 5) return { texto: "Regular", color: "#D48689", emoji: "🟠" };
     return { texto: "Bajo", color: "#C7362F", emoji: "🔴" };
   };
-
   const estadoMembresia = getEstadoMembresia();
 
   if (!usuario) return null;
 
+  // Generar estilos dinámicos basados en el tema
+  const dynamicStyles = createDynamicStyles(theme);
+
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#37738F" />
-      
-      {/* Header mejorado */}
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.header} />
+        {/* Header mejorado */}
+      <View style={[styles.header, dynamicStyles.headerDynamic]}>
         <View style={styles.headerContent}>
           <View style={styles.avatarSection}>
             <View style={styles.avatarContainer}>
               <View style={styles.avatarBackground}>
-                <MaterialIcons name="person" size={48} color="#37738F" />
+                <MaterialIcons name="person" size={48} color={theme.primary} />
               </View>
               <View style={styles.statusIndicator}>
                 <Text style={styles.statusEmoji}>{estadoMembresia.emoji}</Text>
@@ -177,12 +196,12 @@ export default function PerfilScreen() {
             </View>
             
             <View style={styles.userInfo}>
-              <Text style={styles.nombreUsuario}>
+              <Text style={[styles.nombreUsuario, { color: theme.textInverse }]}>
                 👋 {usuario.nombre} {usuario.apellidos}
               </Text>
               <View style={styles.membershipBadge}>
-                <MaterialIcons name="verified" size={16} color="#56A099" />
-                <Text style={styles.tipoMiembro}>Pensionado Verificado</Text>
+                <MaterialIcons name="verified" size={16} color={theme.accent} />
+                <Text style={[styles.tipoMiembro, { color: theme.accent }]}>Pensionado Verificado</Text>
               </View>
             </View>
           </View>
@@ -205,8 +224,7 @@ export default function PerfilScreen() {
         {/* Información del perfil mejorada */}
         <View style={styles.perfilCard}>
           <View style={styles.cardHeader}>
-            <View style={styles.cardTitleContainer}>
-              <MaterialIcons name="person-outline" size={20} color="#37738F" />
+            <View style={styles.cardTitleContainer}>              <MaterialIcons name="person-outline" size={20} color={theme.primary} />
               <Text style={styles.cardTitle}>Información Personal</Text>
             </View>
           </View>
@@ -253,8 +271,7 @@ export default function PerfilScreen() {
         {/* Estadísticas de membresía mejoradas */}
         <View style={styles.estadisticasCard}>
           <View style={styles.cardHeader}>
-            <View style={styles.cardTitleContainer}>
-              <MaterialIcons name="analytics" size={20} color="#37738F" />
+            <View style={styles.cardTitleContainer}>              <MaterialIcons name="analytics" size={20} color={theme.primary} />
               <Text style={styles.cardTitle}>📊 Estadísticas de Membresía</Text>
             </View>
             <View style={[styles.estadoBadge, { backgroundColor: estadoMembresia.color }]}>
@@ -293,13 +310,23 @@ export default function PerfilScreen() {
               📅 {obtenerProximoVencimiento()}
             </Text>
           </View>
+        </View>        {/* Configuración de Apariencia */}
+        <View style={styles.opcionesCard}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTitleContainer}>              <MaterialIcons name="palette" size={20} color={theme.primary} />
+              <Text style={styles.cardTitle}>🎨 Apariencia</Text>
+            </View>
+          </View>
+          
+          <View style={styles.temaContainer}>
+            <ThemeToggle />
+          </View>
         </View>
 
         {/* Opciones de configuración mejoradas - Grid 2x2 CORREGIDO */}
         <View style={styles.opcionesCard}>
           <View style={styles.cardHeader}>
-            <View style={styles.cardTitleContainer}>
-              <MaterialIcons name="settings" size={20} color="#37738F" />
+            <View style={styles.cardTitleContainer}>              <MaterialIcons name="settings" size={20} color={theme.primary} />
               <Text style={styles.cardTitle}>⚙️ Configuración</Text>
             </View>
           </View>
@@ -507,13 +534,33 @@ export default function PerfilScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Función para crear estilos dinámicos basados en el tema
+const createDynamicStyles = (theme: any) => ({
+  headerDynamic: {
+    backgroundColor: theme.header,
+  },
+  textDynamic: {
+    color: theme.text,
+  },
+  textSecondaryDynamic: {
+    color: theme.textSecondary,
+  },
+  cardDynamic: {
+    backgroundColor: theme.card,
+  },
+  surfaceDynamic: {
+    backgroundColor: theme.surface,
+  },
+});
+
+// 🔥 Función para generar estilos dinámicos basados en el tema
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#EFEDD3",
+    backgroundColor: theme.background,
   },
   header: {
-    backgroundColor: "#37738F",
+    backgroundColor: theme.primary,
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 30,
@@ -538,12 +585,11 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: "relative",
     marginRight: 16,
-  },
-  avatarBackground: {
+  },  avatarBackground: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
@@ -606,9 +652,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 40,
-  },
-  perfilCard: {
-    backgroundColor: "#FFF",
+  },  perfilCard: {
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -628,19 +673,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-  },
-  cardTitle: {
+  },  cardTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
   },
   infoGrid: {
     gap: 16,
-  },
-  infoItem: {
+  },  infoItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8F9FA",
+    backgroundColor: theme.surface,
     padding: 16,
     borderRadius: 12,
   },
@@ -648,17 +691,16 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#F0F8FF",
+    backgroundColor: theme.background,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
   },
   infoTexto: {
     flex: 1,
-  },
-  infoLabel: {
+  },infoLabel: {
     fontSize: 12,
-    color: "#5F98A6",
+    color: theme.textSecondary,
     marginBottom: 2,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -666,11 +708,10 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 16,
-    color: "#37738F",
+    color: theme.text,
     fontWeight: "500",
-  },
-  estadisticasCard: {
-    backgroundColor: "#FFF",
+  },estadisticasCard: {
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -694,10 +735,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     marginVertical: 20,
-  },
-  estadisticaCard: {
+  },  estadisticaCard: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: theme.surface,
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
@@ -747,9 +787,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#5F98A6",
     fontWeight: "500",
-  },
-  opcionesCard: {
-    backgroundColor: "#FFF",
+  },  opcionesCard: {
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -764,14 +803,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-  },
-  opcionCard: {
+  },  opcionCard: {
     width: "47%", // Un poco menos del 50% para dar espacio
-    backgroundColor: "#F8F9FA",
+    backgroundColor: theme.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: theme.border,
     minHeight: 120,
     marginBottom: 12,
   },
@@ -795,25 +833,23 @@ const styles = StyleSheet.create({
   opcionContent: {
     flex: 1,
     marginBottom: 8,
-  },
-  opcionTitulo: {
+  },  opcionTitulo: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
     marginBottom: 4,
     lineHeight: 16,
   },
   opcionSubtitulo: {
     fontSize: 11,
-    color: "#5F98A6",
+    color: theme.textMuted,
     lineHeight: 14,
   },
   opcionFooter: {
     alignItems: "flex-end",
     justifyContent: "flex-end",
-  },
-  infoAppCard: {
-    backgroundColor: "#FFF",
+  },  infoAppCard: {
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -878,9 +914,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(55, 115, 143, 0.6)",
     justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "#FFF",
+  },  modalContent: {
+    backgroundColor: theme.card,
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
     maxHeight: "85%",
@@ -978,10 +1013,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
-  },
-  saveButtonText: {
+  },  saveButtonText: {
     fontSize: 16,
     color: "#FFF",
     fontWeight: "bold",
+  },
+  temaContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
 });

@@ -9,10 +9,10 @@ import {
   Modal,
   TextInput,
   StatusBar,
-  Animated,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 interface Reserva {
   id: string;
@@ -59,6 +59,9 @@ const horariosDisponibles = [
 ];
 
 export default function ReservasScreen() {
+  const { theme, isDarkMode } = useTheme();
+  const styles = createStyles(theme);
+
   const [reservas, setReservas] = useState<Reserva[]>(reservasActuales);
   const [modalVisible, setModalVisible] = useState(false);
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
@@ -72,13 +75,13 @@ export default function ReservasScreen() {
   const getEstadoColor = (estado: string) => {
     switch (estado) {
       case "confirmada":
-        return "#56A099"; // Verde turquesa de la paleta
+        return "#56A099";
       case "pendiente":
-        return "#D48689"; // Rosa coral
+        return "#D48689";
       case "cancelada":
-        return "#C7362F"; // Rojo coral
+        return "#C7362F";
       default:
-        return "#5F98A6"; // Azul turquesa
+        return "#5F98A6";
     }
   };
 
@@ -140,20 +143,10 @@ export default function ReservasScreen() {
     const primerDia = new Date(año, mes, 1);
     const ultimoDia = new Date(año, mes + 1, 0);
     const diasEnMes = ultimoDia.getDate();
-    const diaSemanaInicio = primerDia.getDay(); // 0 = domingo
-    
+    const diaSemanaInicio = primerDia.getDay();
     const dias = [];
-    
-    // Añadir días vacíos al inicio
-    for (let i = 0; i < diaSemanaInicio; i++) {
-      dias.push(null);
-    }
-    
-    // Añadir todos los días del mes
-    for (let i = 1; i <= diasEnMes; i++) {
-      dias.push(new Date(año, mes, i));
-    }
-    
+    for (let i = 0; i < diaSemanaInicio; i++) dias.push(null);
+    for (let i = 1; i <= diasEnMes; i++) dias.push(new Date(año, mes, i));
     return dias;
   };
 
@@ -176,10 +169,7 @@ export default function ReservasScreen() {
     setMesActual(prev => new Date(prev.getFullYear(), prev.getMonth() + direccion, 1));
   };
 
-  const nombreMes = mesActual.toLocaleDateString("es-BO", { 
-    month: "long", 
-    year: "numeric" 
-  });
+  const nombreMes = mesActual.toLocaleDateString("es-BO", { month: "long", year: "numeric" });
 
   const cancelarReserva = (id: string) => {
     Alert.alert(
@@ -213,7 +203,6 @@ export default function ReservasScreen() {
       Alert.alert("⚠️ Error", "Por favor selecciona fecha y hora para tu reserva");
       return;
     }
-
     const nuevaReserva: Reserva = {
       id: Date.now().toString(),
       fecha: fechaSeleccionada,
@@ -223,16 +212,12 @@ export default function ReservasScreen() {
       estado: "pendiente",
       comentarios: comentarios,
     };
-
     setReservas((prev) => [...prev, nuevaReserva]);
     setModalVisible(false);
-
-    // Limpiar formulario
     setFechaSeleccionada("");
     setHoraSeleccionada("");
     setPersonasSeleccionadas(2);
     setComentarios("");
-
     Alert.alert(
       "🎉 ¡Reserva creada!",
       "Tu reserva ha sido creada y está pendiente de confirmación"
@@ -245,8 +230,6 @@ export default function ReservasScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#37738F" />
-      
-      {/* Header estático mejorado */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.headerTextSection}>
@@ -255,8 +238,6 @@ export default function ReservasScreen() {
               Gestiona tus reservas como pensionado
             </Text>
           </View>
-          
-          {/* Stats mini */}
           <View style={styles.headerStats}>
             <View style={styles.miniStat}>
               <Text style={styles.miniStatNumber}>{reservasConfirmadas}</Text>
@@ -269,13 +250,10 @@ export default function ReservasScreen() {
           </View>
         </View>
       </View>
-
-      {/* ScrollView con el contenido */}
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Botón nueva reserva mejorado */}
         <TouchableOpacity
           style={styles.nuevaReservaButton}
           onPress={() => setModalVisible(true)}
@@ -290,11 +268,8 @@ export default function ReservasScreen() {
           </View>
           <MaterialIcons name="arrow-forward" size={20} color="#FFF" />
         </TouchableOpacity>
-
-        {/* Lista de reservas mejorada */}
         <View style={styles.reservasContainer}>
           <Text style={styles.sectionTitle}>📅 Próximas Reservas</Text>
-
           {reservas.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconContainer}>
@@ -314,7 +289,6 @@ export default function ReservasScreen() {
           ) : (
             reservas.map((reserva) => (
               <View key={reserva.id} style={styles.reservaCard}>
-                {/* Header de la tarjeta mejorado */}
                 <View style={styles.reservaHeader}>
                   <View style={styles.fechaContainer}>
                     <View style={styles.fechaCircle}>
@@ -335,7 +309,6 @@ export default function ReservasScreen() {
                       </Text>
                     </View>
                   </View>
-                  
                   <View style={styles.estadoContainer}>
                     <View
                       style={[
@@ -354,8 +327,6 @@ export default function ReservasScreen() {
                     </View>
                   </View>
                 </View>
-
-                {/* Detalles mejorados */}
                 <View style={styles.reservaDetalle}>
                   <View style={styles.detalleGrid}>
                     <View style={styles.detalleItem}>
@@ -369,7 +340,6 @@ export default function ReservasScreen() {
                         </Text>
                       </View>
                     </View>
-                    
                     <View style={styles.detalleItem}>
                       <View style={styles.detalleIconContainer}>
                         <MaterialIcons name="table-restaurant" size={16} color="#61B1BA" />
@@ -381,7 +351,6 @@ export default function ReservasScreen() {
                     </View>
                   </View>
                 </View>
-
                 {reserva.comentarios && (
                   <View style={styles.comentariosContainer}>
                     <View style={styles.comentariosHeader}>
@@ -393,7 +362,6 @@ export default function ReservasScreen() {
                     </Text>
                   </View>
                 )}
-
                 {reserva.estado !== "cancelada" && (
                   <View style={styles.accionesContainer}>
                     <TouchableOpacity
@@ -404,7 +372,6 @@ export default function ReservasScreen() {
                       <MaterialIcons name="cancel" size={16} color="#C7362F" />
                       <Text style={styles.cancelarTexto}>Cancelar</Text>
                     </TouchableOpacity>
-                    
                     <TouchableOpacity
                       style={styles.editarButton}
                       activeOpacity={0.7}
@@ -418,36 +385,31 @@ export default function ReservasScreen() {
             ))
           )}
         </View>
-
-        {/* Información adicional mejorada */}
         <View style={styles.infoContainer}>
           <View style={styles.infoHeader}>
             <MaterialIcons name="info" size={24} color="#61B1BA" />
             <Text style={styles.infoTitle}>ℹ️ Información importante</Text>
           </View>
-          
           <View style={styles.infoGrid}>
             <View style={styles.infoItem}>
               <MaterialIcons name="star" size={16} color="#D48689" />
               <Text style={styles.infoText}>Prioridad en reservas como pensionado</Text>
-            </View>
-            <View style={styles.infoItem}>
+            </View>            <View style={styles.infoItem}>
               <MaterialIcons name="check-circle" size={16} color="#56A099" />
               <Text style={styles.infoText}>Confirmación automática</Text>
             </View>
             <View style={styles.infoItem}>
-              <MaterialIcons name="schedule" size={16} color="#5F98A6" />
+              <MaterialIcons name="schedule" size={16} color={theme.textMuted} />
               <Text style={styles.infoText}>Cancelación hasta 2h antes</Text>
             </View>
             <View style={styles.infoItem}>
-              <MaterialIcons name="access-time" size={16} color="#37738F" />
+              <MaterialIcons name="access-time" size={16} color={theme.primary} />
               <Text style={styles.infoText}>12:00-14:30 y 18:30-21:00</Text>
             </View>
           </View>
         </View>
       </ScrollView>
-
-      {/* Modal mejorado */}
+      {/* Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -456,27 +418,23 @@ export default function ReservasScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleContainer}>
-                <MaterialIcons name="event-available" size={24} color="#37738F" />
+            <View style={styles.modalHeader}>              <View style={styles.modalTitleContainer}>
+                <MaterialIcons name="event-available" size={24} color={theme.primary} />
                 <Text style={styles.modalTitle}>📝 Nueva Reserva</Text>
               </View>
               <TouchableOpacity 
                 onPress={() => setModalVisible(false)}
                 style={styles.closeButton}
               >
-                <MaterialIcons name="close" size={24} color="#666" />
+                <MaterialIcons name="close" size={24} color={theme.textMuted} />
               </TouchableOpacity>
             </View>
-
             <ScrollView style={styles.modalForm} showsVerticalScrollIndicator={false}>
-              {/* Fecha con calendario mejorado */}
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>
-                  <MaterialIcons name="calendar-today" size={16} color="#37738F" />
+              {/* Fecha con calendario */}
+              <View style={styles.formGroup}>                <Text style={styles.formLabel}>
+                  <MaterialIcons name="calendar-today" size={16} color={theme.primary} />
                   {" "}Fecha de la reserva
                 </Text>
-                
                 <TouchableOpacity 
                   style={styles.fechaButton}
                   onPress={() => setMostrarCalendario(true)}
@@ -496,8 +454,7 @@ export default function ReservasScreen() {
                     <MaterialIcons name="expand-more" size={20} color="#61B1BA" />
                   </View>
                 </TouchableOpacity>
-
-                {/* Modal del Calendario */}
+                {/* Modal Calendario */}
                 <Modal
                   visible={mostrarCalendario}
                   transparent={true}
@@ -506,7 +463,6 @@ export default function ReservasScreen() {
                 >
                   <View style={styles.calendarioOverlay}>
                     <View style={styles.calendarioContainer}>
-                      {/* Header del calendario */}
                       <View style={styles.calendarioHeader}>
                         <TouchableOpacity 
                           onPress={() => cambiarMes(-1)}
@@ -514,11 +470,9 @@ export default function ReservasScreen() {
                         >
                           <MaterialIcons name="chevron-left" size={24} color="#37738F" />
                         </TouchableOpacity>
-                        
                         <Text style={styles.calendarioTitulo}>
                           {nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1)}
                         </Text>
-                        
                         <TouchableOpacity 
                           onPress={() => cambiarMes(1)}
                           style={styles.calendarioNavButton}
@@ -526,8 +480,6 @@ export default function ReservasScreen() {
                           <MaterialIcons name="chevron-right" size={24} color="#37738F" />
                         </TouchableOpacity>
                       </View>
-
-                      {/* Días de la semana */}
                       <View style={styles.diasSemanaContainer}>
                         {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia) => (
                           <Text key={dia} style={styles.diaSemanaLabel}>
@@ -535,8 +487,6 @@ export default function ReservasScreen() {
                           </Text>
                         ))}
                       </View>
-
-                      {/* Grid de días */}
                       <View style={styles.diasGrid}>
                         {obtenerDiasDelMes(mesActual).map((fecha, index) => (
                           <TouchableOpacity
@@ -563,8 +513,6 @@ export default function ReservasScreen() {
                           </TouchableOpacity>
                         ))}
                       </View>
-
-                      {/* Botones del calendario */}
                       <View style={styles.calendarioActions}>
                         <TouchableOpacity 
                           style={styles.calendarioCancelButton}
@@ -577,8 +525,7 @@ export default function ReservasScreen() {
                   </View>
                 </Modal>
               </View>
-
-              {/* Hora mejorada */}
+              {/* Hora */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>
                   <MaterialIcons name="schedule" size={16} color="#37738F" />
@@ -609,8 +556,7 @@ export default function ReservasScreen() {
                   </View>
                 </ScrollView>
               </View>
-
-              {/* Personas mejorado */}
+              {/* Personas */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>
                   <MaterialIcons name="people" size={16} color="#37738F" />
@@ -626,14 +572,12 @@ export default function ReservasScreen() {
                   >
                     <MaterialIcons name="remove" size={20} color="#FFF" />
                   </TouchableOpacity>
-                  
                   <View style={styles.personasDisplay}>
                     <Text style={styles.personasTexto}>{personasSeleccionadas}</Text>
                     <Text style={styles.personasLabel}>
                       persona{personasSeleccionadas !== 1 ? "s" : ""}
                     </Text>
                   </View>
-                  
                   <TouchableOpacity
                     style={styles.personasButton}
                     onPress={() =>
@@ -645,8 +589,7 @@ export default function ReservasScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
-
-              {/* Comentarios mejorados */}
+              {/* Comentarios */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>
                   <MaterialIcons name="comment" size={16} color="#37738F" />
@@ -665,7 +608,6 @@ export default function ReservasScreen() {
                 </View>
               </View>
             </ScrollView>
-
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelModalButton}
@@ -690,20 +632,19 @@ export default function ReservasScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#EFEDD3",
+    backgroundColor: theme.background,
   },
-  // 🔥 Header estático (fuera del ScrollView)
   header: {
-    backgroundColor: "#37738F",
+    backgroundColor: theme.primary,
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 30,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
-    shadowColor: "#37738F",
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -714,19 +655,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
   },
-  headerTextSection: {
-    flex: 1,
-  },
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#FFF",
+    color: theme.textInverse,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: "#E8E6CD",
+    color: theme.surface,
     fontWeight: "500",
+  },
+  headerTextSection: {
+    flex: 1,
   },
   headerStats: {
     flexDirection: "row",
@@ -742,17 +683,16 @@ const styles = StyleSheet.create({
   miniStatNumber: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#FFF",
+    color: theme.textInverse,
   },
   miniStatLabel: {
     fontSize: 10,
-    color: "#E8E6CD",
+    color: theme.surface,
     marginTop: 2,
   },
-  // 🔥 ScrollContent con padding superior aumentado
   scrollContent: {
     padding: 20,
-    paddingTop: 30, // 🔥 Espacio del header
+    paddingTop: 30,
     paddingBottom: 40,
   },
   nuevaReservaButton: {
@@ -792,18 +732,17 @@ const styles = StyleSheet.create({
   },
   reservasContainer: {
     marginBottom: 24,
-  },
-  sectionTitle: {
+  },  sectionTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
     marginBottom: 16,
     marginLeft: 4,
   },
   emptyState: {
     alignItems: "center",
     padding: 40,
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card,
     borderRadius: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -815,7 +754,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#F0F8FF",
+    backgroundColor: theme.surface,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
@@ -823,12 +762,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 16,
-    color: "#5F98A6",
+    color: theme.textMuted,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 20,
@@ -845,7 +784,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   reservaCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -867,12 +806,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-  },
-  fechaCircle: {
+  },  fechaCircle: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#F0F8FF",
+    backgroundColor: theme.surface,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -882,12 +820,12 @@ const styles = StyleSheet.create({
   fechaDia: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
     lineHeight: 18,
   },
   fechaMes: {
     fontSize: 10,
-    color: "#5F98A6",
+    color: theme.textMuted,
     textTransform: "uppercase",
     lineHeight: 12,
   },
@@ -897,12 +835,12 @@ const styles = StyleSheet.create({
   reservaFecha: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
     letterSpacing: 0.5,
   },
   reservaHora: {
     fontSize: 14,
-    color: "#5F98A6",
+    color: theme.textMuted,
     marginTop: 2,
     flexDirection: "row",
     alignItems: "center",
@@ -929,12 +867,11 @@ const styles = StyleSheet.create({
   detalleGrid: {
     flexDirection: "row",
     justifyContent: "space-between",
-  },
-  detalleItem: {
+  },  detalleItem: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: theme.surface,
     padding: 12,
     borderRadius: 12,
     marginHorizontal: 4,
@@ -943,25 +880,24 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#F0F8FF",
+    backgroundColor: theme.background,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 8,
   },
   detalleLabel: {
     fontSize: 11,
-    color: "#666",
+    color: theme.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
-  },
-  detalleValor: {
+  },  detalleValor: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
     marginTop: 2,
   },
   comentariosContainer: {
-    backgroundColor: "#F0F8FF",
+    backgroundColor: theme.surface,
     padding: 12,
     borderRadius: 12,
     marginBottom: 16,
@@ -975,13 +911,13 @@ const styles = StyleSheet.create({
   comentariosLabel: {
     fontSize: 12,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   comentariosTexto: {
     fontSize: 14,
-    color: "#5F98A6",
+    color: theme.textMuted,
     lineHeight: 20,
     fontStyle: "italic",
   },
@@ -990,16 +926,15 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
+    borderTopColor: theme.border,
     gap: 12,
-  },
-  cancelarButton: {
+  },  cancelarButton: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#FFEBEE",
+    backgroundColor: theme.background === "#121212" ? "rgba(199, 54, 47, 0.2)" : "#FFEBEE",
     gap: 4,
   },
   cancelarTexto: {
@@ -1013,16 +948,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F0F8FF",
+    backgroundColor: theme.surface,
     gap: 4,
   },
   editarTexto: {
-    color: "#5F98A6",
+    color: theme.textMuted,
     fontSize: 14,
     fontWeight: "600",
   },
   infoContainer: {
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 20,
     shadowColor: "#000",
@@ -1040,7 +975,7 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
   },
   infoGrid: {
     gap: 12,
@@ -1052,19 +987,16 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: "#5F98A6",
+    color: theme.textMuted,
     flex: 1,
     lineHeight: 20,
   },
-  
-  // Modal styles mejorados
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(55, 115, 143, 0.6)",
     justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "#FFF",
+  },  modalContent: {
+    backgroundColor: theme.card,
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
     maxHeight: "90%",
@@ -1075,23 +1007,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: theme.border,
   },
   modalTitleContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-  },
-  modalTitle: {
+  },  modalTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
   },
   closeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: theme.surface,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1104,7 +1035,7 @@ const styles = StyleSheet.create({
   formLabel: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
     marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -1113,29 +1044,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#E8CDB8",
+    borderColor: theme.border,
     borderRadius: 12,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: theme.surface,
     paddingHorizontal: 16,
     paddingVertical: 4,
     gap: 8,
   },
   formInput: {
     flex: 1,
-    fontSize: 16,
-    color: "#37738F",
+    fontSize: 16,    color: theme.text,
     paddingVertical: 12,
   },
   textAreaContainer: {
     borderWidth: 2,
-    borderColor: "#E8CDB8",
+    borderColor: theme.border,
     borderRadius: 12,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: theme.surface,
     padding: 16,
   },
   formTextArea: {
     fontSize: 16,
-    color: "#37738F",
+    color: theme.text,
     textAlignVertical: "top",
     minHeight: 80,
   },
@@ -1148,9 +1078,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 25,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: theme.surface,
     borderWidth: 2,
-    borderColor: "#E8CDB8",
+    borderColor: theme.border,
     minWidth: 70,
     alignItems: "center",
   },
@@ -1160,7 +1090,7 @@ const styles = StyleSheet.create({
   },
   horarioTexto: {
     fontSize: 14,
-    color: "#5F98A6",
+    color: theme.textMuted,
     fontWeight: "600",
   },
   horarioTextoSeleccionado: {
@@ -1243,8 +1173,6 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontWeight: "bold",
   },
-  
-  // Estilos del botón de fecha y calendario
   fechaButton: {
     backgroundColor: "#FFF",
     borderRadius: 12,
@@ -1268,13 +1196,10 @@ const styles = StyleSheet.create({
     color: "#999",
     flex: 1,
     marginLeft: 12,
-  },
-  fechaButtonTextSelected: {
-    color: "#37738F",
+  },  fechaButtonTextSelected: {
+    color: theme.primary,
     fontWeight: "500",
   },
-  
-  // Estilos del modal del calendario
   calendarioOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -1283,7 +1208,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   calendarioContainer: {
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card,
     borderRadius: 20,
     padding: 20,
     width: "100%",
@@ -1303,25 +1228,24 @@ const styles = StyleSheet.create({
   calendarioNavButton: {
     padding: 8,
     borderRadius: 20,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: theme.surface,
   },
   calendarioTitulo: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
     textAlign: "center",
     flex: 1,
   },
   diasSemanaContainer: {
     flexDirection: "row",
     marginBottom: 10,
-  },
-  diaSemanaLabel: {
+  },  diaSemanaLabel: {
     flex: 1,
     textAlign: "center",
     fontSize: 12,
     fontWeight: "600",
-    color: "#666",
+    color: theme.textMuted,
     paddingVertical: 8,
   },
   diasGrid: {
@@ -1329,15 +1253,13 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   diaButton: {
-    width: "14.28%", // 100% / 7 días
+    width: "14.28%",
     aspectRatio: 1,
     justifyContent: "center",
     alignItems: "center",
     marginVertical: 2,
   },
-  diaVacio: {
-    // Espacios vacíos para completar semanas
-  },
+  diaVacio: {},
   diaDeshabilitado: {
     opacity: 0.3,
   },
@@ -1347,11 +1269,12 @@ const styles = StyleSheet.create({
   },
   diaTexto: {
     fontSize: 16,
-    color: "#333",
+    color: theme.text,
     fontWeight: "500",
   },
   diaTextoDeshabilitado: {
-    color: "#CCC",
+    color: theme.textMuted,
+    opacity: 0.5,
   },
   diaTextoSeleccionado: {
     color: "#FFF",
@@ -1364,12 +1287,12 @@ const styles = StyleSheet.create({
   calendarioCancelButton: {
     paddingVertical: 12,
     paddingHorizontal: 24,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: theme.surface,
     borderRadius: 20,
   },
   calendarioCancelText: {
     fontSize: 14,
-    color: "#666",
+    color: theme.textMuted,
     fontWeight: "500",
   },
 });
