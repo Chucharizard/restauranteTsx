@@ -168,7 +168,6 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   );
 };
 
-// 🔧 Estilos estáticos removidos ya que usamos estilos dinámicos
-// Esto es más consistente con el sistema de temas
+
 
 export default ThemeToggle;
