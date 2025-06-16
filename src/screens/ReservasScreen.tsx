@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,8 +9,11 @@ import {
   Modal,
   TextInput,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
@@ -22,103 +25,81 @@ interface Reserva {
   mesa: string;
   estado: "confirmada" | "pendiente" | "cancelada";
   comentarios: string;
+  fechaCreacion: string;
+  usuarioId: string; // Cambiado de 'usuario' a 'usuarioId'
 }
 
-const reservasActuales: Reserva[] = [
+const STORAGE_KEY = '@reservas_pensionado';
+
+const reservasIniciales: Reserva[] = [
   {
     id: "1",
-    fecha: "2025-06-15",
+    fecha: "2025-06-18",
     hora: "12:30",
     personas: 2,
     mesa: "Mesa 5",
     estado: "confirmada",
     comentarios: "Mesa cerca de la ventana",
+    fechaCreacion: "2025-06-15T10:30:00Z",
+    usuarioId: "1", // ID del usuario Paneton
   },
   {
     id: "2",
-    fecha: "2025-06-18",
+    fecha: "2025-06-20",
     hora: "19:00",
     personas: 4,
     mesa: "Mesa 12",
     estado: "pendiente",
     comentarios: "Celebración familiar",
+    fechaCreacion: "2025-06-15T14:45:00Z",
+    usuarioId: "1", // ID del usuario Paneton
   },
 ];
 
 const horariosDisponibles = [
-  "12:00",
-  "12:30",
-  "13:00",
-  "13:30",
-  "14:00",
-  "18:30",
-  "19:00",
-  "19:30",
-  "20:00",
-  "20:30",
+  "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
+  "18:30", "19:00", "19:30", "20:00", "20:30", "21:00"
 ];
 
-export default function ReservasScreen() {
-  const { theme, isDarkMode } = useTheme();
-  const styles = createStyles(theme);
-
-  const [reservas, setReservas] = useState<Reserva[]>(reservasActuales);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [fechaSeleccionada, setFechaSeleccionada] = useState("");
-  const [horaSeleccionada, setHoraSeleccionada] = useState("");
-  const [personasSeleccionadas, setPersonasSeleccionadas] = useState(2);
-  const [comentarios, setComentarios] = useState("");
-  const [mostrarCalendario, setMostrarCalendario] = useState(false);
-  const [mesActual, setMesActual] = useState(new Date());
-  const { usuario } = useAuth();
-
+// Componente ReservaCard extraído
+const ReservaCard = React.memo(({ 
+  reserva, 
+  onCancel, 
+  onEdit, 
+  theme, 
+  styles 
+}: {
+  reserva: Reserva;
+  onCancel: (id: string) => void;
+  onEdit: (reserva: Reserva) => void;
+  theme: any;
+  styles: any;
+}) => {
   const getEstadoColor = (estado: string) => {
     switch (estado) {
-      case "confirmada":
-        return "#56A099";
-      case "pendiente":
-        return "#D48689";
-      case "cancelada":
-        return "#C7362F";
-      default:
-        return "#5F98A6";
+      case "confirmada": return "#56A099";
+      case "pendiente": return "#D48689";
+      case "cancelada": return "#C7362F";
+      default: return "#5F98A6";
     }
   };
 
   const getEstadoIcon = (estado: string) => {
     switch (estado) {
-      case "confirmada":
-        return "check-circle";
-      case "pendiente":
-        return "schedule";
-      case "cancelada":
-        return "cancel";
-      default:
-        return "help";
+      case "confirmada": return "check-circle";
+      case "pendiente": return "schedule";
+      case "cancelada": return "cancel";
+      default: return "help";
     }
   };
 
   const getEstadoTexto = (estado: string) => {
     switch (estado) {
-      case "confirmada":
-        return "Confirmada";
-      case "pendiente":
-        return "Pendiente";
-      case "cancelada":
-        return "Cancelada";
-      default:
-        return "Desconocido";
+      case "confirmada": return "Confirmada";
+      case "pendiente": return "Pendiente";
+      case "cancelada": return "Cancelada";
+      default: return "Desconocido";
     }
-  };
-
-  const formatearFecha = (fecha: string) => {
-    const date = new Date(fecha);
-    return date.toLocaleDateString("es-BO", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
   };
 
   const formatearFechaCorta = (fecha: string) => {
@@ -136,7 +117,138 @@ export default function ReservasScreen() {
     });
   };
 
-  // Funciones del calendario
+  return (
+    <View 
+      style={styles.reservaCard}
+      accessible={true}
+      accessibilityLabel={`Reserva para ${reserva.fecha} a las ${reserva.hora}, ${reserva.personas} personas, estado ${getEstadoTexto(reserva.estado)}`}
+    >
+      <View style={styles.reservaHeader}>
+        <View style={styles.fechaContainer}>
+          <View style={styles.fechaCircle}>
+            <Text style={styles.fechaDia}>
+              {formatearFechaCorta(reserva.fecha).split(' ')[0]}
+            </Text>
+            <Text style={styles.fechaMes}>
+              {formatearFechaCorta(reserva.fecha).split(' ')[1]}
+            </Text>
+          </View>
+          <View style={styles.fechaTextos}>
+            <Text style={styles.reservaFecha}>
+              {getDiaSemana(reserva.fecha).toUpperCase()}
+            </Text>
+            <Text style={styles.reservaHora}>
+              <MaterialIcons name="schedule" size={14} color="#61B1BA" />
+              {" "}{reserva.hora}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.estadoContainer}>
+          <View
+            style={[
+              styles.estadoBadge,
+              { backgroundColor: getEstadoColor(reserva.estado) },
+            ]}
+          >
+            <MaterialIcons 
+              name={getEstadoIcon(reserva.estado) as any} 
+              size={12} 
+              color="#FFF" 
+            />
+            <Text style={styles.estadoTexto}>
+              {getEstadoTexto(reserva.estado)}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.reservaDetalle}>
+        <View style={styles.detalleGrid}>
+          <View style={styles.detalleItem}>
+            <View style={styles.detalleIconContainer}>
+              <MaterialIcons name="people" size={16} color="#61B1BA" />
+            </View>
+            <View>
+              <Text style={styles.detalleLabel}>Personas</Text>
+              <Text style={styles.detalleValor}>
+                {reserva.personas} persona{reserva.personas !== 1 ? "s" : ""}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.detalleItem}>
+            <View style={styles.detalleIconContainer}>
+              <MaterialIcons name="table-restaurant" size={16} color="#61B1BA" />
+            </View>
+            <View>
+              <Text style={styles.detalleLabel}>Mesa</Text>
+              <Text style={styles.detalleValor}>{reserva.mesa}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {reserva.comentarios && (
+        <View style={styles.comentariosContainer}>
+          <View style={styles.comentariosHeader}>
+            <MaterialIcons name="comment" size={14} color="#5F98A6" />
+            <Text style={styles.comentariosLabel}>Comentarios</Text>
+          </View>
+          <Text style={styles.comentariosTexto}>
+            {reserva.comentarios}
+          </Text>
+        </View>
+      )}
+
+      {reserva.estado !== "cancelada" && (
+        <View style={styles.accionesContainer}>
+          <TouchableOpacity
+            style={styles.cancelarButton}
+            onPress={() => onCancel(reserva.id)}
+            activeOpacity={0.7}
+            accessible={true}
+            accessibilityLabel="Cancelar reserva"
+            accessibilityRole="button"
+          >
+            <MaterialIcons name="cancel" size={16} color="#C7362F" />
+            <Text style={styles.cancelarTexto}>Cancelar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.editarButton}
+            onPress={() => onEdit(reserva)}
+            activeOpacity={0.7}
+            accessible={true}
+            accessibilityLabel="Modificar reserva"
+            accessibilityRole="button"
+          >
+            <MaterialIcons name="edit" size={16} color="#5F98A6" />
+            <Text style={styles.editarTexto}>Modificar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+});
+
+// Componente Calendario extraído
+const CalendarioCustom = React.memo(({ 
+  visible, 
+  onClose, 
+  onDateSelect, 
+  selectedDate, 
+  reservasExistentes,
+  theme,
+  styles 
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onDateSelect: (fecha: Date) => void;
+  selectedDate: string;
+  reservasExistentes: Reserva[];
+  theme: any;
+  styles: any;
+}) => {
+  const [mesActual, setMesActual] = useState(new Date());
+
   const obtenerDiasDelMes = (fecha: Date) => {
     const año = fecha.getFullYear();
     const mes = fecha.getMonth();
@@ -160,104 +272,546 @@ export default function ReservasScreen() {
     return fecha >= hoy;
   };
 
-  const seleccionarFecha = (fecha: Date) => {
-    setFechaSeleccionada(formatearFechaCalendario(fecha));
-    setMostrarCalendario(false);
+  const tieneReserva = (fecha: Date) => {
+    const fechaStr = formatearFechaCalendario(fecha);
+    return reservasExistentes.some(reserva => 
+      reserva.fecha === fechaStr && reserva.estado !== 'cancelada'
+    );
   };
 
   const cambiarMes = (direccion: number) => {
     setMesActual(prev => new Date(prev.getFullYear(), prev.getMonth() + direccion, 1));
   };
 
+  const cambiarAño = (direccion: number) => {
+    setMesActual(prev => new Date(prev.getFullYear() + direccion, prev.getMonth(), 1));
+  };
+
   const nombreMes = mesActual.toLocaleDateString("es-BO", { month: "long", year: "numeric" });
 
-  const cancelarReserva = (id: string) => {
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.calendarioOverlay}>
+        <View style={styles.calendarioContainer}>
+          <View style={styles.calendarioHeader}>
+            <TouchableOpacity 
+              onPress={() => cambiarMes(-1)}
+              style={styles.calendarioNavButton}
+              accessible={true}
+              accessibilityLabel="Mes anterior"
+            >
+              <MaterialIcons name="chevron-left" size={24} color="#37738F" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              onPress={() => cambiarAño(-1)}
+              style={styles.calendarioYearButton}
+              accessible={true}
+              accessibilityLabel="Año anterior"
+            >
+              <Text style={styles.calendarioYearText}>‹‹</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.calendarioTitulo}>
+              {nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1)}
+            </Text>
+
+            <TouchableOpacity 
+              onPress={() => cambiarAño(1)}
+              style={styles.calendarioYearButton}
+              accessible={true}
+              accessibilityLabel="Año siguiente"
+            >
+              <Text style={styles.calendarioYearText}>››</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => cambiarMes(1)}
+              style={styles.calendarioNavButton}
+              accessible={true}
+              accessibilityLabel="Mes siguiente"
+            >
+              <MaterialIcons name="chevron-right" size={24} color="#37738F" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.diasSemanaContainer}>
+            {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia) => (
+              <Text key={dia} style={styles.diaSemanaLabel}>
+                {dia}
+              </Text>
+            ))}
+          </View>
+
+          <View style={styles.diasGrid}>
+            {obtenerDiasDelMes(mesActual).map((fecha, index) => {
+              const fechaStr = fecha ? formatearFechaCalendario(fecha) : '';
+              const esSeleccionado = fecha && selectedDate === fechaStr;
+              const esHabilitado = fecha && esFechaHabilitada(fecha);
+              const tieneReservaExistente = fecha && tieneReserva(fecha);
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.diaButton,
+                    !fecha && styles.diaVacio,
+                    fecha && !esHabilitado && styles.diaDeshabilitado,
+                    esSeleccionado && styles.diaSeleccionado,
+                    tieneReservaExistente && styles.diaConReserva
+                  ]}
+                  onPress={() => fecha && esHabilitado && onDateSelect(fecha)}
+                  disabled={!fecha || !esHabilitado}
+                  activeOpacity={0.7}
+                  accessible={true}
+                  accessibilityLabel={fecha ? `${fecha.getDate()} de ${nombreMes}` : undefined}
+                >
+                  {fecha && (
+                    <>
+                      <Text style={[
+                        styles.diaTexto,
+                        !esHabilitado && styles.diaTextoDeshabilitado,
+                        esSeleccionado && styles.diaTextoSeleccionado
+                      ]}>
+                        {fecha.getDate()}
+                      </Text>
+                      {tieneReservaExistente && (
+                        <View style={styles.indicadorReserva} />
+                      )}
+                    </>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={styles.calendarioLeyenda}>
+            <View style={styles.leyendaItem}>
+              <View style={[styles.leyendaColor, { backgroundColor: '#37738F' }]} />
+              <Text style={styles.leyendaTexto}>Seleccionado</Text>
+            </View>
+            <View style={styles.leyendaItem}>
+              <View style={[styles.leyendaColor, { backgroundColor: '#D48689' }]} />
+              <Text style={styles.leyendaTexto}>Con reserva</Text>
+            </View>
+          </View>
+
+          <View style={styles.calendarioActions}>
+            <TouchableOpacity 
+              style={styles.calendarioCancelButton}
+              onPress={onClose}
+              accessible={true}
+              accessibilityLabel="Cerrar calendario"
+            >
+              <Text style={styles.calendarioCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+});
+
+export default function ReservasScreen() {
+  const { theme, isDarkMode } = useTheme();
+  const { usuario } = useAuth();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  // Estados principales
+  const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Estados del modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editandoReserva, setEditandoReserva] = useState<Reserva | null>(null);
+  const [fechaSeleccionada, setFechaSeleccionada] = useState("");
+  const [horaSeleccionada, setHoraSeleccionada] = useState("");
+  const [personasSeleccionadas, setPersonasSeleccionadas] = useState(2);
+  const [comentarios, setComentarios] = useState("");
+  const [mostrarCalendario, setMostrarCalendario] = useState(false);
+  const [loadingCreacion, setLoadingCreacion] = useState(false);
+
+  // Cargar reservas al iniciar
+  useEffect(() => {
+    cargarReservas();
+  }, []);
+
+  const cargarReservas = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const reservasGuardadas = await AsyncStorage.getItem(STORAGE_KEY);
+      if (reservasGuardadas) {
+        const reservasParseadas = JSON.parse(reservasGuardadas);
+        // Filtrar solo las reservas del usuario actual usando el ID
+        const reservasUsuario = reservasParseadas.filter(
+          (r: Reserva) => r.usuarioId === usuario?.id
+        );
+        setReservas(reservasUsuario);
+      } else {
+        // Si no hay reservas guardadas, usar las iniciales si es el usuario correcto
+        const reservasUsuario = reservasIniciales.filter(
+          r => r.usuarioId === usuario?.id
+        );
+        setReservas(reservasUsuario);
+        if (reservasUsuario.length > 0) {
+          await guardarReservas(reservasUsuario);
+        }
+      }
+    } catch (err) {
+      console.error('Error cargando reservas:', err);
+      setError('Error al cargar las reservas');
+      setReservas([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await cargarReservas();
+    setRefreshing(false);
+  }, []);
+
+  const guardarReservas = async (nuevasReservas: Reserva[]) => {
+    try {
+      // Obtener todas las reservas existentes
+      const todasReservas = await AsyncStorage.getItem(STORAGE_KEY);
+      let reservasExistentes: Reserva[] = todasReservas ? JSON.parse(todasReservas) : [];
+      
+      // Filtrar las reservas que no son del usuario actual
+      const reservasOtrosUsuarios = reservasExistentes.filter(
+        r => r.usuarioId !== usuario?.id
+      );
+      
+      // Combinar con las nuevas reservas del usuario actual
+      const reservasActualizadas = [...reservasOtrosUsuarios, ...nuevasReservas];
+      
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(reservasActualizadas));
+    } catch (err) {
+      console.error('Error guardando reservas:', err);
+    }
+  };
+
+  // Validaciones mejoradas
+  const validarReserva = useCallback((): string[] => {
+    const errores: string[] = [];
+    
+    if (!fechaSeleccionada) {
+      errores.push("• Selecciona una fecha para tu reserva");
+    }
+    
+    if (!horaSeleccionada) {
+      errores.push("• Selecciona una hora para tu reserva");
+    }
+    
+    if (personasSeleccionadas < 1 || personasSeleccionadas > 8) {
+      errores.push("• El número de personas debe estar entre 1 y 8");
+    }
+    
+    // Validar que la fecha no sea en el pasado
+    if (fechaSeleccionada) {
+      const fechaReserva = new Date(fechaSeleccionada);
+      const ahora = new Date();
+      ahora.setHours(0, 0, 0, 0);
+      
+      if (fechaReserva < ahora) {
+        errores.push("• No puedes reservar para fechas pasadas");
+      }
+    }
+    
+    // Validar disponibilidad solo si no estamos editando
+    if (fechaSeleccionada && horaSeleccionada && !editandoReserva) {
+      const reservaExistente = reservas.find(r => 
+        r.fecha === fechaSeleccionada && 
+        r.hora === horaSeleccionada && 
+        r.estado !== 'cancelada'
+      );
+      
+      if (reservaExistente) {
+        errores.push("• Ya tienes una reserva para esta fecha y hora");
+      }
+    }
+    
+    // Validar que no sea muy tarde para reservar el mismo día
+    if (fechaSeleccionada && horaSeleccionada) {
+      const fechaReserva = new Date(fechaSeleccionada);
+      const ahora = new Date();
+      const horaReserva = parseInt(horaSeleccionada.split(':')[0]);
+      
+      if (fechaReserva.toDateString() === ahora.toDateString()) {
+        if (ahora.getHours() > horaReserva - 2) {
+          errores.push("• Para reservas del mismo día, debes hacerlo con al menos 2 horas de anticipación");
+        }
+      }
+    }
+    
+    return errores;
+  }, [fechaSeleccionada, horaSeleccionada, personasSeleccionadas, reservas, editandoReserva]);
+
+  const resetForm = useCallback(() => {
+    setFechaSeleccionada("");
+    setHoraSeleccionada("");
+    setPersonasSeleccionadas(2);
+    setComentarios("");
+    setEditandoReserva(null);
+    setError('');
+  }, []);
+
+  const crearOEditarReserva = useCallback(async () => {
+    try {
+      setLoadingCreacion(true);
+      setError('');
+      
+      const errores = validarReserva();
+      if (errores.length > 0) {
+        Alert.alert(
+          "⚠️ Errores en la reserva", 
+          errores.join('\n'),
+          [{ text: "Entendido", style: "default" }]
+        );
+        return;
+      }
+      
+      // Simular llamada a API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (editandoReserva) {
+        // Editar reserva existente
+        const reservaActualizada: Reserva = {
+          ...editandoReserva,
+          fecha: fechaSeleccionada,
+          hora: horaSeleccionada,
+          personas: personasSeleccionadas,
+          comentarios: comentarios.trim(),
+        };
+        
+        const nuevasReservas = reservas.map(r => 
+          r.id === editandoReserva.id ? reservaActualizada : r
+        );
+        
+        setReservas(nuevasReservas);
+        await guardarReservas(nuevasReservas);
+        
+        Alert.alert(
+          "✅ ¡Reserva actualizada!",
+          "Tu reserva ha sido modificada exitosamente"
+        );
+      } else {
+        // Crear nueva reserva
+        const nuevaReserva: Reserva = {
+          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          fecha: fechaSeleccionada,
+          hora: horaSeleccionada,
+          personas: personasSeleccionadas,
+          mesa: `Mesa ${Math.floor(Math.random() * 20) + 1}`,
+          estado: "pendiente",
+          comentarios: comentarios.trim(),
+          fechaCreacion: new Date().toISOString(),
+          usuarioId: usuario?.id || 'unknown', // Usar el ID del usuario
+        };
+        
+        const nuevasReservas = [...reservas, nuevaReserva];
+        setReservas(nuevasReservas);
+        await guardarReservas(nuevasReservas);
+        
+        Alert.alert(
+          "🎉 ¡Reserva creada!",
+          "Tu reserva ha sido creada y está pendiente de confirmación"
+        );
+      }
+      
+      resetForm();
+      setModalVisible(false);
+      
+    } catch (err) {
+      console.error('Error al crear/editar reserva:', err);
+      setError('Error al procesar la reserva. Intenta nuevamente.');
+      Alert.alert(
+        "❌ Error",
+        "Hubo un problema al procesar tu reserva. Por favor intenta nuevamente."
+      );
+    } finally {
+      setLoadingCreacion(false);
+    }
+  }, [
+    validarReserva, 
+    editandoReserva, 
+    fechaSeleccionada, 
+    horaSeleccionada, 
+    personasSeleccionadas, 
+    comentarios, 
+    reservas, 
+    resetForm, 
+    usuario,
+    guardarReservas
+  ]);
+
+  const cancelarReserva = useCallback(async (id: string) => {
+    const reserva = reservas.find(r => r.id === id);
+    if (!reserva) return;
+
     Alert.alert(
       "🚫 Cancelar Reserva",
-      "¿Estás seguro de que deseas cancelar esta reserva?",
+      `¿Estás seguro de que deseas cancelar tu reserva del ${formatearFecha(reserva.fecha)} a las ${reserva.hora}?`,
       [
         { text: "No", style: "cancel" },
         {
           text: "Sí, cancelar",
           style: "destructive",
-          onPress: () => {
-            setReservas((prev) =>
-              prev.map((reserva) =>
-                reserva.id === id
-                  ? { ...reserva, estado: "cancelada" }
-                  : reserva
-              )
-            );
-            Alert.alert(
-              "✅ Reserva cancelada",
-              "Tu reserva ha sido cancelada exitosamente"
-            );
+          onPress: async () => {
+            try {
+              const nuevasReservas = reservas.map((r) =>
+                r.id === id ? { ...r, estado: "cancelada" as const } : r
+              );
+              
+              setReservas(nuevasReservas);
+              await guardarReservas(nuevasReservas);
+              
+              Alert.alert(
+                "✅ Reserva cancelada",
+                "Tu reserva ha sido cancelada exitosamente"
+              );
+            } catch (err) {
+              console.error('Error al cancelar reserva:', err);
+              Alert.alert(
+                "❌ Error",
+                "No se pudo cancelar la reserva. Intenta nuevamente."
+              );
+            }
           },
         },
       ]
     );
-  };
+  }, [reservas, guardarReservas]);
 
-  const crearReserva = () => {
-    if (!fechaSeleccionada || !horaSeleccionada) {
-      Alert.alert("⚠️ Error", "Por favor selecciona fecha y hora para tu reserva");
-      return;
-    }
-    const nuevaReserva: Reserva = {
-      id: Date.now().toString(),
-      fecha: fechaSeleccionada,
-      hora: horaSeleccionada,
-      personas: personasSeleccionadas,
-      mesa: `Mesa ${Math.floor(Math.random() * 20) + 1}`,
-      estado: "pendiente",
-      comentarios: comentarios,
-    };
-    setReservas((prev) => [...prev, nuevaReserva]);
+  const editarReserva = useCallback((reserva: Reserva) => {
+    setEditandoReserva(reserva);
+    setFechaSeleccionada(reserva.fecha);
+    setHoraSeleccionada(reserva.hora);
+    setPersonasSeleccionadas(reserva.personas);
+    setComentarios(reserva.comentarios);
+    setModalVisible(true);
+  }, []);
+
+  const formatearFecha = useCallback((fecha: string) => {
+    const date = new Date(fecha);
+    return date.toLocaleDateString("es-BO", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }, []);
+
+  const seleccionarFecha = useCallback((fecha: Date) => {
+    setFechaSeleccionada(fecha.toISOString().split('T')[0]);
+    setMostrarCalendario(false);
+  }, []);
+
+  const abrirModalNuevaReserva = useCallback(() => {
+    resetForm();
+    setModalVisible(true);
+  }, [resetForm]);
+
+  const cerrarModal = useCallback(() => {
+    resetForm();
     setModalVisible(false);
-    setFechaSeleccionada("");
-    setHoraSeleccionada("");
-    setPersonasSeleccionadas(2);
-    setComentarios("");
-    Alert.alert(
-      "🎉 ¡Reserva creada!",
-      "Tu reserva ha sido creada y está pendiente de confirmación"
-    );
-  };
+  }, [resetForm]);
 
-  const reservasConfirmadas = reservas.filter(r => r.estado === "confirmada").length;
-  const reservasPendientes = reservas.filter(r => r.estado === "pendiente").length;
+  // Estadísticas calculadas
+  const estadisticas = useMemo(() => {
+    const confirmadas = reservas.filter(r => r.estado === "confirmada").length;
+    const pendientes = reservas.filter(r => r.estado === "pendiente").length;
+    const canceladas = reservas.filter(r => r.estado === "cancelada").length;
+    
+    return { confirmadas, pendientes, canceladas };
+  }, [reservas]);
+
+  // Reservas filtradas y ordenadas
+  const reservasActivas = useMemo(() => {
+    return reservas
+      .filter(r => r.estado !== "cancelada")
+      .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+  }, [reservas]);
+
+  if (loading && !refreshing) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={styles.loadingText}>Cargando reservas...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#37738F" />
+      
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.headerTextSection}>
             <Text style={styles.headerTitle}>🍽️ Mis Reservas</Text>
             <Text style={styles.headerSubtitle}>
-              Gestiona tus reservas como pensionado
+              Gestiona tus reservas {usuario?.nombre}
             </Text>
           </View>
           <View style={styles.headerStats}>
             <View style={styles.miniStat}>
-              <Text style={styles.miniStatNumber}>{reservasConfirmadas}</Text>
+              <Text style={styles.miniStatNumber}>{estadisticas.confirmadas}</Text>
               <Text style={styles.miniStatLabel}>Confirmadas</Text>
             </View>
             <View style={styles.miniStat}>
-              <Text style={styles.miniStatNumber}>{reservasPendientes}</Text>
+              <Text style={styles.miniStatNumber}>{estadisticas.pendientes}</Text>
               <Text style={styles.miniStatLabel}>Pendientes</Text>
             </View>
           </View>
         </View>
       </View>
+
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
+          />
+        }
       >
+        {/* Error Display */}
+        {error ? (
+          <View style={styles.errorContainer}>
+            <MaterialIcons name="error" size={20} color="#C7362F" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={cargarReservas}
+            >
+              <Text style={styles.retryText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {/* Botón Nueva Reserva */}
         <TouchableOpacity
           style={styles.nuevaReservaButton}
-          onPress={() => setModalVisible(true)}
+          onPress={abrirModalNuevaReserva}
           activeOpacity={0.8}
+          accessible={true}
+          accessibilityLabel="Crear nueva reserva"
+          accessibilityRole="button"
         >
           <View style={styles.nuevaReservaIconContainer}>
             <MaterialIcons name="add" size={24} color="#FFF" />
@@ -268,123 +822,43 @@ export default function ReservasScreen() {
           </View>
           <MaterialIcons name="arrow-forward" size={20} color="#FFF" />
         </TouchableOpacity>
+
+        {/* Lista de Reservas */}
         <View style={styles.reservasContainer}>
           <Text style={styles.sectionTitle}>📅 Próximas Reservas</Text>
-          {reservas.length === 0 ? (
+          {reservasActivas.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconContainer}>
                 <MaterialIcons name="event-available" size={60} color="#61B1BA" />
               </View>
-              <Text style={styles.emptyText}>No tienes reservas</Text>
+              <Text style={styles.emptyText}>No tienes reservas activas</Text>
               <Text style={styles.emptySubtext}>
                 Crea tu primera reserva usando el botón de arriba
               </Text>
               <TouchableOpacity 
                 style={styles.emptyActionButton}
-                onPress={() => setModalVisible(true)}
+                onPress={abrirModalNuevaReserva}
+                accessible={true}
+                accessibilityLabel="Hacer nueva reserva"
               >
                 <Text style={styles.emptyActionText}>Hacer Reserva</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            reservas.map((reserva) => (
-              <View key={reserva.id} style={styles.reservaCard}>
-                <View style={styles.reservaHeader}>
-                  <View style={styles.fechaContainer}>
-                    <View style={styles.fechaCircle}>
-                      <Text style={styles.fechaDia}>
-                        {formatearFechaCorta(reserva.fecha).split(' ')[0]}
-                      </Text>
-                      <Text style={styles.fechaMes}>
-                        {formatearFechaCorta(reserva.fecha).split(' ')[1]}
-                      </Text>
-                    </View>
-                    <View style={styles.fechaTextos}>
-                      <Text style={styles.reservaFecha}>
-                        {getDiaSemana(reserva.fecha).toUpperCase()}
-                      </Text>
-                      <Text style={styles.reservaHora}>
-                        <MaterialIcons name="schedule" size={14} color="#61B1BA" />
-                        {" "}{reserva.hora}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.estadoContainer}>
-                    <View
-                      style={[
-                        styles.estadoBadge,
-                        { backgroundColor: getEstadoColor(reserva.estado) },
-                      ]}
-                    >
-                      <MaterialIcons 
-                        name={getEstadoIcon(reserva.estado) as any} 
-                        size={12} 
-                        color="#FFF" 
-                      />
-                      <Text style={styles.estadoTexto}>
-                        {getEstadoTexto(reserva.estado)}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-                <View style={styles.reservaDetalle}>
-                  <View style={styles.detalleGrid}>
-                    <View style={styles.detalleItem}>
-                      <View style={styles.detalleIconContainer}>
-                        <MaterialIcons name="people" size={16} color="#61B1BA" />
-                      </View>
-                      <View>
-                        <Text style={styles.detalleLabel}>Personas</Text>
-                        <Text style={styles.detalleValor}>
-                          {reserva.personas} persona{reserva.personas !== 1 ? "s" : ""}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.detalleItem}>
-                      <View style={styles.detalleIconContainer}>
-                        <MaterialIcons name="table-restaurant" size={16} color="#61B1BA" />
-                      </View>
-                      <View>
-                        <Text style={styles.detalleLabel}>Mesa</Text>
-                        <Text style={styles.detalleValor}>{reserva.mesa}</Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-                {reserva.comentarios && (
-                  <View style={styles.comentariosContainer}>
-                    <View style={styles.comentariosHeader}>
-                      <MaterialIcons name="comment" size={14} color="#5F98A6" />
-                      <Text style={styles.comentariosLabel}>Comentarios</Text>
-                    </View>
-                    <Text style={styles.comentariosTexto}>
-                      {reserva.comentarios}
-                    </Text>
-                  </View>
-                )}
-                {reserva.estado !== "cancelada" && (
-                  <View style={styles.accionesContainer}>
-                    <TouchableOpacity
-                      style={styles.cancelarButton}
-                      onPress={() => cancelarReserva(reserva.id)}
-                      activeOpacity={0.7}
-                    >
-                      <MaterialIcons name="cancel" size={16} color="#C7362F" />
-                      <Text style={styles.cancelarTexto}>Cancelar</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.editarButton}
-                      activeOpacity={0.7}
-                    >
-                      <MaterialIcons name="edit" size={16} color="#5F98A6" />
-                      <Text style={styles.editarTexto}>Modificar</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
+            reservasActivas.map((reserva) => (
+              <ReservaCard
+                key={reserva.id}
+                reserva={reserva}
+                onCancel={cancelarReserva}
+                onEdit={editarReserva}
+                theme={theme}
+                styles={styles}
+              />
             ))
           )}
         </View>
+
+        {/* Información */}
         <View style={styles.infoContainer}>
           <View style={styles.infoHeader}>
             <MaterialIcons name="info" size={24} color="#61B1BA" />
@@ -394,7 +868,8 @@ export default function ReservasScreen() {
             <View style={styles.infoItem}>
               <MaterialIcons name="star" size={16} color="#D48689" />
               <Text style={styles.infoText}>Prioridad en reservas como pensionado</Text>
-            </View>            <View style={styles.infoItem}>
+            </View>
+            <View style={styles.infoItem}>
               <MaterialIcons name="check-circle" size={16} color="#56A099" />
               <Text style={styles.infoText}>Confirmación automática</Text>
             </View>
@@ -409,36 +884,55 @@ export default function ReservasScreen() {
           </View>
         </View>
       </ScrollView>
-      {/* Modal */}
+
+      {/* Modal de Reserva */}
       <Modal
         animationType="slide"
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={cerrarModal}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>              <View style={styles.modalTitleContainer}>
+            <View style={styles.modalHeader}>              
+              <View style={styles.modalTitleContainer}>
                 <MaterialIcons name="event-available" size={24} color={theme.primary} />
-                <Text style={styles.modalTitle}>📝 Nueva Reserva</Text>
+                <Text style={styles.modalTitle}>
+                  {editandoReserva ? "✏️ Editar Reserva" : "📝 Nueva Reserva"}
+                </Text>
               </View>
               <TouchableOpacity 
-                onPress={() => setModalVisible(false)}
+                onPress={cerrarModal}
                 style={styles.closeButton}
+                accessible={true}
+                accessibilityLabel="Cerrar modal"
               >
                 <MaterialIcons name="close" size={24} color={theme.textMuted} />
               </TouchableOpacity>
             </View>
+
             <ScrollView style={styles.modalForm} showsVerticalScrollIndicator={false}>
-              {/* Fecha con calendario */}
-              <View style={styles.formGroup}>                <Text style={styles.formLabel}>
+              {error ? (
+                <View style={styles.modalErrorContainer}>
+                  <Text style={styles.modalErrorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              {/* Fecha */}
+              <View style={styles.formGroup}>                
+                <Text style={styles.formLabel}>
                   <MaterialIcons name="calendar-today" size={16} color={theme.primary} />
-                  {" "}Fecha de la reserva
+                  {" "}Fecha de la reserva *
                 </Text>
                 <TouchableOpacity 
-                  style={styles.fechaButton}
+                  style={[
+                    styles.fechaButton,
+                    fechaSeleccionada && styles.fechaButtonSelected
+                  ]}
                   onPress={() => setMostrarCalendario(true)}
                   activeOpacity={0.8}
+                  accessible={true}
+                  accessibilityLabel={fechaSeleccionada ? `Fecha seleccionada: ${formatearFecha(fechaSeleccionada)}` : "Seleccionar fecha"}
                 >
                   <View style={styles.fechaButtonContent}>
                     <MaterialIcons name="date-range" size={20} color="#61B1BA" />
@@ -454,82 +948,13 @@ export default function ReservasScreen() {
                     <MaterialIcons name="expand-more" size={20} color="#61B1BA" />
                   </View>
                 </TouchableOpacity>
-                {/* Modal Calendario */}
-                <Modal
-                  visible={mostrarCalendario}
-                  transparent={true}
-                  animationType="fade"
-                  onRequestClose={() => setMostrarCalendario(false)}
-                >
-                  <View style={styles.calendarioOverlay}>
-                    <View style={styles.calendarioContainer}>
-                      <View style={styles.calendarioHeader}>
-                        <TouchableOpacity 
-                          onPress={() => cambiarMes(-1)}
-                          style={styles.calendarioNavButton}
-                        >
-                          <MaterialIcons name="chevron-left" size={24} color="#37738F" />
-                        </TouchableOpacity>
-                        <Text style={styles.calendarioTitulo}>
-                          {nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1)}
-                        </Text>
-                        <TouchableOpacity 
-                          onPress={() => cambiarMes(1)}
-                          style={styles.calendarioNavButton}
-                        >
-                          <MaterialIcons name="chevron-right" size={24} color="#37738F" />
-                        </TouchableOpacity>
-                      </View>
-                      <View style={styles.diasSemanaContainer}>
-                        {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia) => (
-                          <Text key={dia} style={styles.diaSemanaLabel}>
-                            {dia}
-                          </Text>
-                        ))}
-                      </View>
-                      <View style={styles.diasGrid}>
-                        {obtenerDiasDelMes(mesActual).map((fecha, index) => (
-                          <TouchableOpacity
-                            key={index}
-                            style={[
-                              styles.diaButton,
-                              !fecha && styles.diaVacio,
-                              fecha && !esFechaHabilitada(fecha) && styles.diaDeshabilitado,
-                              fecha && fechaSeleccionada === formatearFechaCalendario(fecha) && styles.diaSeleccionado
-                            ]}
-                            onPress={() => fecha && esFechaHabilitada(fecha) && seleccionarFecha(fecha)}
-                            disabled={!fecha || !esFechaHabilitada(fecha)}
-                            activeOpacity={0.7}
-                          >
-                            {fecha && (
-                              <Text style={[
-                                styles.diaTexto,
-                                !esFechaHabilitada(fecha) && styles.diaTextoDeshabilitado,
-                                fechaSeleccionada === formatearFechaCalendario(fecha) && styles.diaTextoSeleccionado
-                              ]}>
-                                {fecha.getDate()}
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                      <View style={styles.calendarioActions}>
-                        <TouchableOpacity 
-                          style={styles.calendarioCancelButton}
-                          onPress={() => setMostrarCalendario(false)}
-                        >
-                          <Text style={styles.calendarioCancelText}>Cancelar</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                </Modal>
               </View>
+
               {/* Hora */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>
                   <MaterialIcons name="schedule" size={16} color="#37738F" />
-                  {" "}Hora preferida
+                  {" "}Hora preferida *
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={styles.horariosContainer}>
@@ -542,6 +967,8 @@ export default function ReservasScreen() {
                         ]}
                         onPress={() => setHoraSeleccionada(hora)}
                         activeOpacity={0.8}
+                        accessible={true}
+                        accessibilityLabel={`Seleccionar hora ${hora}`}
                       >
                         <Text
                           style={[
@@ -556,21 +983,32 @@ export default function ReservasScreen() {
                   </View>
                 </ScrollView>
               </View>
+
               {/* Personas */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>
                   <MaterialIcons name="people" size={16} color="#37738F" />
-                  {" "}Número de personas
+                  {" "}Número de personas (1-8) *
                 </Text>
                 <View style={styles.personasContainer}>
                   <TouchableOpacity
-                    style={styles.personasButton}
+                    style={[
+                      styles.personasButton,
+                      personasSeleccionadas <= 1 && styles.personasButtonDisabled
+                    ]}
                     onPress={() =>
                       setPersonasSeleccionadas(Math.max(1, personasSeleccionadas - 1))
                     }
                     activeOpacity={0.8}
+                    disabled={personasSeleccionadas <= 1}
+                    accessible={true}
+                    accessibilityLabel="Reducir número de personas"
                   >
-                    <MaterialIcons name="remove" size={20} color="#FFF" />
+                    <MaterialIcons 
+                      name="remove" 
+                      size={20} 
+                      color={personasSeleccionadas <= 1 ? "#CCC" : "#FFF"} 
+                    />
                   </TouchableOpacity>
                   <View style={styles.personasDisplay}>
                     <Text style={styles.personasTexto}>{personasSeleccionadas}</Text>
@@ -579,16 +1017,27 @@ export default function ReservasScreen() {
                     </Text>
                   </View>
                   <TouchableOpacity
-                    style={styles.personasButton}
+                    style={[
+                      styles.personasButton,
+                      personasSeleccionadas >= 8 && styles.personasButtonDisabled
+                    ]}
                     onPress={() =>
                       setPersonasSeleccionadas(Math.min(8, personasSeleccionadas + 1))
                     }
                     activeOpacity={0.8}
+                    disabled={personasSeleccionadas >= 8}
+                    accessible={true}
+                    accessibilityLabel="Aumentar número de personas"
                   >
-                    <MaterialIcons name="add" size={20} color="#FFF" />
+                    <MaterialIcons 
+                      name="add" 
+                      size={20} 
+                      color={personasSeleccionadas >= 8 ? "#CCC" : "#FFF"} 
+                    />
                   </TouchableOpacity>
                 </View>
               </View>
+
               {/* Comentarios */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>
@@ -598,36 +1047,70 @@ export default function ReservasScreen() {
                 <View style={styles.textAreaContainer}>
                   <TextInput
                     style={styles.formTextArea}
-                    placeholder="Ej: Mesa cerca de la ventana, celebración especial, etc."
+                    placeholder="Ej: Mesa cerca de la ventana, celebración especial, alergias alimentarias, etc."
                     value={comentarios}
                     onChangeText={setComentarios}
                     multiline
                     numberOfLines={3}
+                    maxLength={200}
                     placeholderTextColor="#999"
+                    accessible={true}
+                    accessibilityLabel="Campo de comentarios"
                   />
+                  <Text style={styles.characterCount}>
+                    {comentarios.length}/200
+                  </Text>
                 </View>
               </View>
             </ScrollView>
+
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelModalButton}
-                onPress={() => setModalVisible(false)}
+                onPress={cerrarModal}
                 activeOpacity={0.8}
+                accessible={true}
+                accessibilityLabel="Cancelar"
               >
                 <Text style={styles.cancelModalButtonText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.createButton}
-                onPress={crearReserva}
+                style={[
+                  styles.createButton,
+                  loadingCreacion && styles.createButtonDisabled
+                ]}
+                onPress={crearOEditarReserva}
                 activeOpacity={0.8}
+                disabled={loadingCreacion}
+                accessible={true}
+                accessibilityLabel={editandoReserva ? "Guardar cambios" : "Crear reserva"}
               >
-                <MaterialIcons name="check" size={20} color="#FFF" />
-                <Text style={styles.createButtonText}>Crear Reserva</Text>
+                {loadingCreacion ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <>
+                    <MaterialIcons name="check" size={20} color="#FFF" />
+                    <Text style={styles.createButtonText}>
+                      {editandoReserva ? "Guardar Cambios" : "Crear Reserva"}
+                    </Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
+
+      {/* Calendario */}
+      <CalendarioCustom
+        visible={mostrarCalendario}
+        onClose={() => setMostrarCalendario(false)}
+        onDateSelect={seleccionarFecha}
+        selectedDate={fechaSeleccionada}
+        reservasExistentes={reservas}
+        theme={theme}
+        styles={styles}
+      />
     </View>
   );
 }
@@ -636,6 +1119,15 @@ const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: theme.textMuted,
   },
   header: {
     backgroundColor: theme.primary,
@@ -695,6 +1187,31 @@ const createStyles = (theme: any) => StyleSheet.create({
     paddingTop: 30,
     paddingBottom: 40,
   },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFEBEE',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  errorText: {
+    flex: 1,
+    color: '#C7362F',
+    fontSize: 14,
+  },
+  retryButton: {
+    backgroundColor: '#C7362F',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+  },
+  retryText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   nuevaReservaButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -732,7 +1249,8 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   reservasContainer: {
     marginBottom: 24,
-  },  sectionTitle: {
+  },
+  sectionTitle: {
     fontSize: 22,
     fontWeight: "bold",
     color: theme.text,
@@ -806,7 +1324,8 @@ const createStyles = (theme: any) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-  },  fechaCircle: {
+  },
+  fechaCircle: {
     width: 50,
     height: 50,
     borderRadius: 25,
@@ -867,7 +1386,8 @@ const createStyles = (theme: any) => StyleSheet.create({
   detalleGrid: {
     flexDirection: "row",
     justifyContent: "space-between",
-  },  detalleItem: {
+  },
+  detalleItem: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
@@ -890,7 +1410,8 @@ const createStyles = (theme: any) => StyleSheet.create({
     color: theme.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
-  },  detalleValor: {
+  },
+  detalleValor: {
     fontSize: 14,
     fontWeight: "bold",
     color: theme.text,
@@ -928,7 +1449,8 @@ const createStyles = (theme: any) => StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.border,
     gap: 12,
-  },  cancelarButton: {
+  },
+  cancelarButton: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
@@ -995,7 +1517,8 @@ const createStyles = (theme: any) => StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(55, 115, 143, 0.6)",
     justifyContent: "flex-end",
-  },  modalContent: {
+  },
+  modalContent: {
     backgroundColor: theme.card,
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
@@ -1013,7 +1536,8 @@ const createStyles = (theme: any) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-  },  modalTitle: {
+  },
+  modalTitle: {
     fontSize: 22,
     fontWeight: "bold",
     color: theme.text,
@@ -1029,6 +1553,17 @@ const createStyles = (theme: any) => StyleSheet.create({
   modalForm: {
     padding: 20,
   },
+  modalErrorContainer: {
+    backgroundColor: '#FFEBEE',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  modalErrorText: {
+    color: '#C7362F',
+    fontSize: 14,
+    textAlign: 'center',
+  },
   formGroup: {
     marginBottom: 24,
   },
@@ -1039,22 +1574,6 @@ const createStyles = (theme: any) => StyleSheet.create({
     marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: theme.border,
-    borderRadius: 12,
-    backgroundColor: theme.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    gap: 8,
-  },
-  formInput: {
-    flex: 1,
-    fontSize: 16,    color: theme.text,
-    paddingVertical: 12,
   },
   textAreaContainer: {
     borderWidth: 2,
@@ -1068,6 +1587,12 @@ const createStyles = (theme: any) => StyleSheet.create({
     color: theme.text,
     textAlignVertical: "top",
     minHeight: 80,
+  },
+  characterCount: {
+    fontSize: 12,
+    color: theme.textMuted,
+    textAlign: 'right',
+    marginTop: 4,
   },
   horariosContainer: {
     flexDirection: "row",
@@ -1100,7 +1625,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F8F9FA",
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: 16,
     gap: 20,
@@ -1118,6 +1643,11 @@ const createStyles = (theme: any) => StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
+  personasButtonDisabled: {
+    backgroundColor: "#CCC",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
   personasDisplay: {
     alignItems: "center",
     minWidth: 80,
@@ -1125,32 +1655,32 @@ const createStyles = (theme: any) => StyleSheet.create({
   personasTexto: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
   },
   personasLabel: {
     fontSize: 12,
-    color: "#5F98A6",
+    color: theme.textMuted,
     marginTop: 2,
   },
   modalActions: {
     flexDirection: "row",
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
+    borderTopColor: theme.border,
     gap: 12,
   },
   cancelModalButton: {
     flex: 1,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: theme.surface,
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#E8CDB8",
+    borderColor: theme.border,
   },
   cancelModalButtonText: {
     fontSize: 16,
-    color: "#5F98A6",
+    color: theme.textMuted,
     fontWeight: "600",
   },
   createButton: {
@@ -1168,23 +1698,31 @@ const createStyles = (theme: any) => StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
+  createButtonDisabled: {
+    backgroundColor: "#CCC",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
   createButtonText: {
     fontSize: 16,
     color: "#FFF",
     fontWeight: "bold",
   },
   fechaButton: {
-    backgroundColor: "#FFF",
+    backgroundColor: theme.surface,
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderWidth: 2,
+    borderColor: theme.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
+  },
+  fechaButtonSelected: {
+    borderColor: "#61B1BA",
   },
   fechaButtonContent: {
     flexDirection: "row",
@@ -1193,11 +1731,12 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   fechaButtonText: {
     fontSize: 15,
-    color: "#999",
+    color: theme.textMuted,
     flex: 1,
     marginLeft: 12,
-  },  fechaButtonTextSelected: {
-    color: theme.primary,
+  },
+  fechaButtonTextSelected: {
+    color: theme.text,
     fontWeight: "500",
   },
   calendarioOverlay: {
@@ -1230,17 +1769,31 @@ const createStyles = (theme: any) => StyleSheet.create({
     borderRadius: 20,
     backgroundColor: theme.surface,
   },
+  calendarioYearButton: {
+    padding: 8,
+    borderRadius: 15,
+    backgroundColor: theme.surface,
+    minWidth: 30,
+    alignItems: 'center',
+  },
+  calendarioYearText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.primary,
+  },
   calendarioTitulo: {
     fontSize: 18,
     fontWeight: "bold",
     color: theme.text,
     textAlign: "center",
     flex: 1,
+    marginHorizontal: 8,
   },
   diasSemanaContainer: {
     flexDirection: "row",
     marginBottom: 10,
-  },  diaSemanaLabel: {
+  },
+  diaSemanaLabel: {
     flex: 1,
     textAlign: "center",
     fontSize: 12,
@@ -1258,6 +1811,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginVertical: 2,
+    position: 'relative',
   },
   diaVacio: {},
   diaDeshabilitado: {
@@ -1265,6 +1819,10 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   diaSeleccionado: {
     backgroundColor: "#37738F",
+    borderRadius: 20,
+  },
+  diaConReserva: {
+    backgroundColor: "rgba(212, 134, 137, 0.3)",
     borderRadius: 20,
   },
   diaTexto: {
@@ -1280,6 +1838,36 @@ const createStyles = (theme: any) => StyleSheet.create({
     color: "#FFF",
     fontWeight: "bold",
   },
+  indicadorReserva: {
+    position: 'absolute',
+    bottom: 2,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D48689',
+  },
+  calendarioLeyenda: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
+  },
+  leyendaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  leyendaColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  leyendaTexto: {
+    fontSize: 12,
+    color: theme.textMuted,
+  },
   calendarioActions: {
     marginTop: 20,
     alignItems: "center",
@@ -1289,6 +1877,8 @@ const createStyles = (theme: any) => StyleSheet.create({
     paddingHorizontal: 24,
     backgroundColor: theme.surface,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   calendarioCancelText: {
     fontSize: 14,

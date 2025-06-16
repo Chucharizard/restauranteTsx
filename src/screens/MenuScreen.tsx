@@ -102,7 +102,7 @@ const platosMenu: PlatoMenu[] = [
     precio: 0, // Incluido en menú
     categoria: "segundos",
     disponible: true,
-    imagen: "🍽️", // Emoji corregido
+    imagen: "🍽️",
     ingredientes: ["Milanesa", "Arroz", "Papa", "Huevo", "Ensalada"],
     tiempo: "20 min",
     popular: true,
@@ -128,7 +128,7 @@ const platosMenu: PlatoMenu[] = [
     precio: 0, // Incluido en menú
     categoria: "postres",
     disponible: true,
-    imagen: "🍯", // Emoji corregido
+    imagen: "🍯",
     ingredientes: ["Harina", "Zapallo", "Miel de caña"],
     tiempo: "15 min",
     popular: true,
@@ -389,7 +389,9 @@ export default function MenuScreen() {
     if (["sopas", "segundos", "postres"].includes(plato.categoria)) {
       seleccionarComponenteMenu(plato);
       return;
-    }    if (plato.precio === 0) {
+    }
+
+    if (plato.precio === 0) {
       // Es parte del menú incluido
       if (plato.categoria === "menu-completo") {
         if (plato.id === "menu-personalizado") {
@@ -514,7 +516,7 @@ export default function MenuScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#37738F" />
+      <StatusBar barStyle="light-content" backgroundColor={theme.primary} />
       
       {/* Header estático mejorado */}
       <View style={styles.header}>
@@ -652,7 +654,7 @@ export default function MenuScreen() {
                 >
                   <MaterialIcons
                     name={categoria.icono as any}
-                    size={18} // 🔥 Reducido de 24 a 18
+                    size={18}
                     color={
                       categoriaSeleccionada === categoria.id ? "#FF6B35" : "#666"
                     }
@@ -676,14 +678,15 @@ export default function MenuScreen() {
         <View style={styles.platosContainer}>
           <FlatList
             data={platosParaMostrar}
-            renderItem={renderPlato}            keyExtractor={(item) => item.id}
+            renderItem={renderPlato}
+            keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             scrollEnabled={false} // Deshabilitado porque está dentro del ScrollView principal
           />
         </View>
       </ScrollView>
 
-      {/* Modal de confirmación con modalidades de servicio */}
+      {/* 🔧 Modal de confirmación CORREGIDO con temas dinámicos */}
       <Modal
         visible={modalConfirmacion}
         transparent={true}
@@ -720,7 +723,7 @@ export default function MenuScreen() {
                 onPress={() => setModalConfirmacion(false)}
                 style={styles.modalCloseButton}
               >
-                <MaterialIcons name="close" size={24} color="#666" />
+                <MaterialIcons name="close" size={24} color={theme.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -743,7 +746,7 @@ export default function MenuScreen() {
                     <MaterialIcons 
                       name={modalidad.icono as any} 
                       size={24} 
-                      color={modalidadSeleccionada === modalidad.id ? "#37738F" : "#666"} 
+                      color={modalidadSeleccionada === modalidad.id ? theme.primary : theme.textMuted} 
                     />
                   </View>
                   
@@ -768,7 +771,7 @@ export default function MenuScreen() {
                     <MaterialIcons 
                       name={modalidadSeleccionada === modalidad.id ? "radio-button-checked" : "radio-button-unchecked"} 
                       size={24} 
-                      color={modalidadSeleccionada === modalidad.id ? "#37738F" : "#CCC"} 
+                      color={modalidadSeleccionada === modalidad.id ? theme.primary : "#CCC"} 
                     />
                   </View>
                 </TouchableOpacity>
@@ -803,17 +806,17 @@ export default function MenuScreen() {
   );
 }
 
-// 🔥 Función para generar estilos dinámicos basados en el tema
+// 🔧 Función para generar estilos dinámicos CORREGIDA
 const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,
   },
-  // 🔥 Header estático (fuera del ScrollView)
   header: {
     backgroundColor: theme.primary,
     paddingHorizontal: 20,
-    paddingTop: 60,    paddingBottom: 24,
+    paddingTop: 60,
+    paddingBottom: 24,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     shadowColor: theme.primary,
@@ -849,13 +852,12 @@ const createStyles = (theme: any) => StyleSheet.create({
     color: theme.surface,
     fontWeight: "500",
   },
-  // 🔥 ScrollContent con padding superior aumentado
   scrollContent: {
-    paddingTop: 20, // 🔥 Espacio del header
-  },  // 🔥 Categorías más pequeñas y compactas
+    paddingTop: 20,
+  },
   categoriasSection: {
     backgroundColor: theme.card,
-    paddingVertical: 16, // 🔥 Reducido de 20 a 16
+    paddingVertical: 16,
     marginHorizontal: 20,
     borderRadius: 16,
     marginBottom: 20,
@@ -866,34 +868,35 @@ const createStyles = (theme: any) => StyleSheet.create({
     elevation: 3,
   },
   categoriasSectionTitle: {
-    fontSize: 18, // 🔥 Reducido de 20 a 18
+    fontSize: 18,
     fontWeight: "bold",
     color: theme.text,
     marginBottom: 4,
   },
   categoriasSectionHeader: {
-    marginHorizontal: 16, // 🔥 Reducido de 20 a 16
-    marginBottom: 12, // 🔥 Reducido de 16 a 12
-  },  instruccionesTexto: {
-    fontSize: 13, // 🔥 Reducido de 14 a 13
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  instruccionesTexto: {
+    fontSize: 13,
     color: theme.textSecondary,
     fontStyle: "italic",
     marginTop: 4,
   },
   categoriasContainer: {
-    paddingBottom: 4, // 🔥 Reducido de 20 a 4
+    paddingBottom: 4,
   },
   categoriasContent: {
-    paddingHorizontal: 16, // 🔥 Reducido de 20 a 16
+    paddingHorizontal: 16,
   },
   categoriaButton: {
     alignItems: "center",
-    paddingHorizontal: 12, // 🔥 Reducido de 16 a 12
-    paddingVertical: 8, // 🔥 Reducido de 12 a 8
-    marginRight: 8, // 🔥 Reducido de 12 a 8
-    borderRadius: 12, // 🔥 Reducido de 16 a 12
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderRadius: 12,
     backgroundColor: "#E8E6CD",
-    minWidth: 70, // 🔥 Reducido de 90 a 70
+    minWidth: 70,
     borderWidth: 2,
     borderColor: "transparent",
   },
@@ -908,19 +911,19 @@ const createStyles = (theme: any) => StyleSheet.create({
     elevation: 4,
   },
   categoriaIconContainer: {
-    width: 32, // 🔥 Reducido de 40 a 32
-    height: 32, // 🔥 Reducido de 40 a 32
-    borderRadius: 16, // 🔥 Reducido de 20 a 16
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "#E8CDB8",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 6, // 🔥 Reducido de 8 a 6
+    marginBottom: 6,
   },
   categoriaIconContainerSelected: {
     backgroundColor: "#E8DAC2",
   },
   categoriaTexto: {
-    fontSize: 11, // 🔥 Reducido de 12 a 11
+    fontSize: 11,
     color: "#37738F",
     fontWeight: "600",
     textAlign: "center",
@@ -929,11 +932,11 @@ const createStyles = (theme: any) => StyleSheet.create({
     color: "#FFF",
     fontWeight: "700",
   },
-  // 🔥 Container de platos ajustado
   platosContainer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },  platoCard: {
+  },
+  platoCard: {
     backgroundColor: theme.card,
     borderRadius: 16,
     padding: 20,
@@ -944,11 +947,11 @@ const createStyles = (theme: any) => StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: theme.border,
   },
   platoNoDisponible: {
     opacity: 0.7,
-    backgroundColor: "#F8F8F8",
+    backgroundColor: theme.surface,
   },
   platoHeader: {
     flexDirection: "row",
@@ -1012,7 +1015,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   platoNombre: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text,
     flex: 1,
     marginRight: 12,
     lineHeight: 24,
@@ -1046,7 +1049,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   platoDescripcion: {
     fontSize: 15,
-    color: "#5F98A6",
+    color: theme.textSecondary,
     lineHeight: 22,
     marginBottom: 12,
   },
@@ -1062,7 +1065,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   metaText: {
     fontSize: 13,
-    color: "#888",
+    color: theme.textMuted,
     fontWeight: "500",
   },
   metaTextPopular: {
@@ -1074,14 +1077,15 @@ const createStyles = (theme: any) => StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
+    borderTopColor: theme.border,
   },
   ingredientesHeader: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 8,
     gap: 6,
-  },  ingredientesTitle: {
+  },
+  ingredientesTitle: {
     fontSize: 14,
     fontWeight: "600",
     color: theme.text,
@@ -1119,9 +1123,9 @@ const createStyles = (theme: any) => StyleSheet.create({
     fontWeight: "600",
   },
   textoNoDisponible: {
-    color: "#999",
+    color: theme.textMuted,
+    opacity: 0.6,
   },
-  // Estilos para el indicador de progreso del menú personalizado
   progresoMenuContainer: {
     marginTop: 16,
     paddingTop: 16,
@@ -1146,22 +1150,24 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   progresoItemCompleto: {
     opacity: 1,
-  },  progresoTexto: {
+  },
+  progresoTexto: {
     fontSize: 12,
     color: "#FFE0D1",
     marginLeft: 4,
     flex: 1,
   },
   
-  // Estilos del Modal de Confirmación
+  // 🔧 ESTILOS DEL MODAL CORREGIDOS CON TEMAS DINÁMICOS
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-  },  modalContainer: {
-    backgroundColor: theme.card,
+  },
+  modalContainer: {
+    backgroundColor: theme.card, // 🔧 Dinámico
     borderRadius: 20,
     padding: 0,
     width: "100%",
@@ -1181,7 +1187,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: theme.border, // 🔧 Dinámico
   },
   modalTitleContainer: {
     flexDirection: "row",
@@ -1195,18 +1201,18 @@ const createStyles = (theme: any) => StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text, // 🔧 Dinámico
     marginBottom: 4,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: "#5F98A6",
+    color: theme.textSecondary, // 🔧 Dinámico
     lineHeight: 18,
   },
   modalCloseButton: {
     padding: 8,
     borderRadius: 20,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: theme.surface, // 🔧 Dinámico
   },
   modalidadesContainer: {
     padding: 20,
@@ -1214,14 +1220,14 @@ const createStyles = (theme: any) => StyleSheet.create({
   modalidadesTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text, // 🔧 Dinámico
     marginBottom: 16,
     textAlign: "center",
   },
   modalidadCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8F9FA",
+    backgroundColor: theme.surface, // 🔧 Dinámico
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -1229,8 +1235,8 @@ const createStyles = (theme: any) => StyleSheet.create({
     borderColor: "transparent",
   },
   modalidadSeleccionada: {
-    backgroundColor: "#E8F4FD",
-    borderColor: "#37738F",
+    backgroundColor: theme.background, // 🔧 Dinámico
+    borderColor: theme.primary, // 🔧 Dinámico
   },
   modalidadIconContainer: {
     flexDirection: "row",
@@ -1247,15 +1253,15 @@ const createStyles = (theme: any) => StyleSheet.create({
   modalidadNombre: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
+    color: theme.text, // 🔧 Dinámico
     marginBottom: 4,
   },
   modalidadNombreSeleccionada: {
-    color: "#37738F",
+    color: theme.primary, // 🔧 Dinámico
   },
   modalidadDescripcion: {
     fontSize: 13,
-    color: "#666",
+    color: theme.textMuted, // 🔧 Dinámico
     lineHeight: 18,
   },
   modalidadCosto: {
@@ -1274,12 +1280,12 @@ const createStyles = (theme: any) => StyleSheet.create({
     paddingBottom: 20,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
+    borderTopColor: theme.border, // 🔧 Dinámico
     gap: 12,
   },
   modalCancelButton: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: theme.surface, // 🔧 Dinámico
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
@@ -1287,11 +1293,11 @@ const createStyles = (theme: any) => StyleSheet.create({
   modalCancelText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#666",
+    color: theme.textMuted, // 🔧 Dinámico
   },
   modalConfirmButton: {
     flex: 2,
-    backgroundColor: "#37738F",
+    backgroundColor: theme.primary, // 🔧 Dinámico
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
@@ -1300,11 +1306,12 @@ const createStyles = (theme: any) => StyleSheet.create({
     gap: 8,
   },
   modalConfirmButtonDisabled: {
-    backgroundColor: "#CCC",
+    backgroundColor: theme.textMuted, // 🔧 Dinámico
+    opacity: 0.5,
   },
   modalConfirmText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#FFF",
+    color: theme.textInverse, // 🔧 Dinámico
   },
 });

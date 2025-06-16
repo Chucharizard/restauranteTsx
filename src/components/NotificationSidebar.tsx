@@ -13,6 +13,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNotifications } from "../context/NotificationsContext";
 import { useNavigation } from "@react-navigation/native";
+import { useTheme } from "../context/ThemeContext"; // ✅ Agregar el hook de tema
 
 const { width, height } = Dimensions.get("window");
 
@@ -27,6 +28,7 @@ export default function NotificationSidebar() {
   } = useNotifications();
   
   const navigation = useNavigation();
+  const { theme, isDarkMode } = useTheme(); // ✅ Usar el tema
   
   const slideAnim = React.useRef(new Animated.Value(width)).current;
   const overlayOpacity = React.useRef(new Animated.Value(0)).current;
@@ -34,11 +36,11 @@ export default function NotificationSidebar() {
 
   React.useEffect(() => {
     if (sidebarVisible) {
-      // 🔥 Animación de entrada más suave y elegante
+      // Animación de entrada más suave y elegante
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: 0,
-          duration: 400, // 🔥 Duración más larga para suavidad
+          duration: 400,
           useNativeDriver: true,
         }),
         Animated.timing(overlayOpacity, {
@@ -53,11 +55,11 @@ export default function NotificationSidebar() {
         })
       ]).start();
     } else {
-      // 🔥 Animación de salida más rápida pero suave
+      // Animación de salida más rápida pero suave
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: width,
-          duration: 300, // 🔥 Salida más rápida
+          duration: 300,
           useNativeDriver: true,
         }),
         Animated.timing(overlayOpacity, {
@@ -106,10 +108,10 @@ export default function NotificationSidebar() {
   const getColorTipo = (tipo: string) => {
     switch (tipo) {
       case "pedido": return "#56A099"; // Verde turquesa
-      case "reserva": return "#37738F"; // Azul principal
+      case "reserva": return theme.primary; // ✅ Usar color del tema
       case "saldo": return "#D47877"; // Rosa coral
       case "promocion": return "#C79591"; // Rojo suave
-      default: return "#5F98A6"; // Azul turquesa
+      default: return theme.tertiary; // ✅ Usar color del tema
     }
   };
 
@@ -135,12 +137,12 @@ export default function NotificationSidebar() {
 
   const notificacionesNoLeidas = notificaciones.filter(n => !n.leida).length;
 
-  // 🔥 Función para cerrar con animación suave
+  // Función para cerrar con animación suave
   const handleClose = () => {
     Animated.parallel([
       Animated.timing(slideAnim, {
         toValue: width,
-        duration: 250, // 🔥 Cierre rápido pero suave
+        duration: 250,
         useNativeDriver: true,
       }),
       Animated.timing(overlayOpacity, {
@@ -154,9 +156,12 @@ export default function NotificationSidebar() {
         useNativeDriver: true,
       })
     ]).start(() => {
-      ocultarSidebar(); // 🔥 Llamar después de la animación
+      ocultarSidebar();
     });
   };
+
+  // ✅ Crear estilos dinámicos basados en el tema
+  const styles = createStyles(theme, isDarkMode);
 
   return (
     <Modal
@@ -166,7 +171,7 @@ export default function NotificationSidebar() {
       onRequestClose={handleClose}
       statusBarTranslucent={false}
     >
-      {/* 🔥 Backdrop con animación separada para más control */}
+      {/* Backdrop con animación separada para más control */}
       <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
         <TouchableOpacity 
           style={styles.backdropTouch}
@@ -175,7 +180,7 @@ export default function NotificationSidebar() {
         />
       </Animated.View>
 
-      {/* 🔥 Container principal con animación de slide */}
+      {/* Container principal con animación de slide */}
       <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
         {/* Sidebar animado */}
         <Animated.View 
@@ -186,13 +191,13 @@ export default function NotificationSidebar() {
                 translateX: slideAnim.interpolate({
                   inputRange: [0, width],
                   outputRange: [0, width],
-                  extrapolate: 'clamp', // 🔥 Evita valores extremos
+                  extrapolate: 'clamp',
                 })
               }]
             }
           ]}
         >
-          {/* 🔥 Indicador de swipe mejorado */}
+          {/* Indicador de swipe mejorado */}
           <Animated.View style={[
             styles.swipeIndicator,
             {
@@ -214,7 +219,7 @@ export default function NotificationSidebar() {
                 transform: [{
                   translateY: overlayOpacity.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [-20, 0], // 🔥 Slide down suave del header
+                    outputRange: [-20, 0],
                   })
                 }]
               }
@@ -222,15 +227,15 @@ export default function NotificationSidebar() {
               <View style={styles.headerTop}>
                 <View style={styles.headerTitleContainer}>
                   <View style={styles.headerIconContainer}>
-                    <MaterialIcons name="notifications" size={28} color="#37738F" />
+                    <MaterialIcons name="notifications" size={28} color={theme.textInverse} />
                     {notificacionesNoLeidas > 0 && (
                       <Animated.View style={[
                         styles.headerNotificationBadge,
                         {
-                          transform: [{ // 🔥 CORRECCIÓN: scale va dentro de transform
+                          transform: [{
                             scale: overlayOpacity.interpolate({
                               inputRange: [0, 1],
-                              outputRange: [0, 1], // 🔥 Badge aparece con scale
+                              outputRange: [0, 1],
                             })
                           }]
                         }
@@ -258,7 +263,7 @@ export default function NotificationSidebar() {
                   onPress={handleClose}
                   activeOpacity={0.8}
                 >
-                  <MaterialIcons name="close" size={24} color="#666" />
+                  <MaterialIcons name="close" size={24} color={theme.textInverse} />
                 </TouchableOpacity>
               </View>
 
@@ -271,7 +276,7 @@ export default function NotificationSidebar() {
                     transform: [{
                       translateY: overlayOpacity.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [10, 0], // 🔥 Slide up suave de las acciones
+                        outputRange: [10, 0],
                       })
                     }]
                   }
@@ -296,7 +301,7 @@ export default function NotificationSidebar() {
                 transform: [{
                   translateY: overlayOpacity.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [30, 0], // 🔥 Lista aparece desde abajo
+                    outputRange: [30, 0],
                   })
                 }]
               }
@@ -309,7 +314,7 @@ export default function NotificationSidebar() {
                 {notificaciones.length === 0 ? (
                   <View style={styles.emptyState}>
                     <View style={styles.emptyIconContainer}>
-                      <MaterialIcons name="notifications-none" size={80} color="#61B1BA" />
+                      <MaterialIcons name="notifications-none" size={80} color={theme.tertiary} />
                     </View>
                     <Text style={styles.emptyText}>📭 Sin notificaciones</Text>
                     <Text style={styles.emptySubtext}>
@@ -342,7 +347,7 @@ export default function NotificationSidebar() {
                           transform: [{
                             translateY: overlayOpacity.interpolate({
                               inputRange: [0, 1],
-                              outputRange: [20 + (index * 5), 0], // 🔥 Animación escalonada
+                              outputRange: [20 + (index * 5), 0],
                             })
                           }]
                         }
@@ -427,7 +432,7 @@ export default function NotificationSidebar() {
                             activeOpacity={0.7}
                           >
                             <View style={styles.deleteButtonContainer}>
-                              <MaterialIcons name="close" size={16} color="#999" />
+                              <MaterialIcons name="close" size={16} color={theme.textMuted} />
                             </View>
                           </TouchableOpacity>
                         </View>
@@ -452,11 +457,12 @@ export default function NotificationSidebar() {
   );
 }
 
-const styles = StyleSheet.create({
-  // 🔥 Backdrop separado para mejor control
+// ✅ Función para crear estilos dinámicos basados en el tema
+const createStyles = (theme: any, isDarkMode: boolean) => StyleSheet.create({
+  // Backdrop separado para mejor control
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)", // ✅ Dinámico
   },
   backdropTouch: {
     flex: 1,
@@ -477,10 +483,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: width * 0.88,
     maxWidth: 400,
-    backgroundColor: "#EFEDD3",
-    shadowColor: "#000",
+    backgroundColor: theme.background, // ✅ Dinámico
+    shadowColor: isDarkMode ? theme.primary : "#000", // ✅ Dinámico
     shadowOffset: { width: -8, height: 0 },
-    shadowOpacity: 0.3,
+    shadowOpacity: isDarkMode ? 0.4 : 0.3, // ✅ Dinámico
     shadowRadius: 15,
     elevation: 20,
   },
@@ -494,18 +500,18 @@ const styles = StyleSheet.create({
   swipeHandle: {
     width: 4,
     height: 40,
-    backgroundColor: "rgba(55, 115, 143, 0.3)",
+    backgroundColor: theme.primary + "50", // ✅ Dinámico con transparencia
     borderRadius: 2,
   },
   sidebarContent: {
     flex: 1,
   },
   sidebarHeader: {
-    backgroundColor: "#37738F",
+    backgroundColor: theme.primary, // ✅ Dinámico
     paddingTop: 20,
     paddingBottom: 20,
     borderBottomLeftRadius: 25,
-    shadowColor: "#37738F",
+    shadowColor: theme.primary, // ✅ Dinámico
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -538,7 +544,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#37738F",
+    borderColor: theme.primary, // ✅ Dinámico
   },
   headerNotificationBadgeText: {
     color: "#FFF",
@@ -551,12 +557,12 @@ const styles = StyleSheet.create({
   sidebarTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#FFF",
+    color: theme.textInverse, // ✅ Dinámico
     marginBottom: 2,
   },
   sidebarSubtitle: {
     fontSize: 13,
-    color: "#E8E6CD",
+    color: theme.accent, // ✅ Dinámico
     fontWeight: "500",
   },
   closeButton: {
@@ -582,7 +588,7 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#E8E6CD",
+    color: theme.accent, // ✅ Dinámico
   },
   notificacionesList: {
     flex: 1,
@@ -602,23 +608,23 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "#F0F8FF",
+    backgroundColor: theme.surface, // ✅ Dinámico
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
     borderWidth: 3,
-    borderColor: "#E8E6CD",
+    borderColor: theme.border, // ✅ Dinámico
   },
   emptyText: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.text, // ✅ Dinámico
     marginBottom: 12,
     textAlign: "center",
   },
   emptySubtext: {
     fontSize: 16,
-    color: "#5F98A6",
+    color: theme.textSecondary, // ✅ Dinámico
     textAlign: "center",
     lineHeight: 24,
     marginBottom: 32,
@@ -630,14 +636,16 @@ const styles = StyleSheet.create({
   emptyFeature: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card, // ✅ Dinámico
     padding: 16,
     borderRadius: 12,
-    shadowColor: "#000",
+    shadowColor: isDarkMode ? theme.primary : "#000", // ✅ Dinámico
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: theme.border, // ✅ Dinámico
   },
   emptyFeatureIcon: {
     fontSize: 24,
@@ -645,29 +653,31 @@ const styles = StyleSheet.create({
   },
   emptyFeatureText: {
     fontSize: 14,
-    color: "#37738F",
+    color: theme.text, // ✅ Dinámico
     fontWeight: "500",
     flex: 1,
   },
   notificacionCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card, // ✅ Dinámico
     borderRadius: 16,
     marginBottom: 12,
-    shadowColor: "#000",
+    shadowColor: isDarkMode ? theme.primary : "#000", // ✅ Dinámico
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: isDarkMode ? 0.15 : 0.08, // ✅ Dinámico
     shadowRadius: 8,
     elevation: 4,
     overflow: "hidden",
     position: "relative",
+    borderWidth: 1,
+    borderColor: theme.border, // ✅ Dinámico
   },
   notificacionCardFirst: {
     marginTop: 0,
   },
   notificacionNoLeida: {
     borderLeftWidth: 4,
-    borderLeftColor: "#37738F",
-    backgroundColor: "#FAFBFF",
+    borderLeftColor: theme.primary, // ✅ Dinámico
+    backgroundColor: isDarkMode ? theme.surface : "#FAFBFF", // ✅ Dinámico
   },
   notificacionContent: {
     flexDirection: "row",
@@ -697,7 +707,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: -2,
     right: -2,
-    backgroundColor: "#FFF",
+    backgroundColor: theme.card, // ✅ Dinámico
     borderRadius: 8,
     padding: 1,
   },
@@ -710,7 +720,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: "#C7362F",
     borderWidth: 2,
-    borderColor: "#FFF",
+    borderColor: theme.card, // ✅ Dinámico
   },
   notificacionTexto: {
     flex: 1,
@@ -724,14 +734,14 @@ const styles = StyleSheet.create({
   notificacionTitulo: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#333",
+    color: theme.text, // ✅ Dinámico
     flex: 1,
     marginRight: 8,
     lineHeight: 20,
   },
   notificacionTituloNoLeida: {
     fontWeight: "bold",
-    color: "#37738F",
+    color: theme.primary, // ✅ Dinámico
   },
   notificacionMeta: {
     flexDirection: "row",
@@ -740,18 +750,18 @@ const styles = StyleSheet.create({
   },
   notificacionTiempo: {
     fontSize: 11,
-    color: "#999",
+    color: theme.textMuted, // ✅ Dinámico
     fontWeight: "500",
   },
   unreadIndicator: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#37738F",
+    backgroundColor: theme.primary, // ✅ Dinámico
   },
   notificacionMensaje: {
     fontSize: 13,
-    color: "#666",
+    color: theme.textSecondary, // ✅ Dinámico
     lineHeight: 18,
     marginBottom: 8,
   },
@@ -772,9 +782,11 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: theme.surface, // ✅ Dinámico
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.border, // ✅ Dinámico
   },
   progressLine: {
     position: "absolute",
@@ -785,3 +797,5 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
 });
+
+// 

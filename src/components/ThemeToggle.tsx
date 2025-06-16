@@ -1,12 +1,35 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Animated,
+  ViewStyle,
+  TextStyle 
+} from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 
+// 🔧 Interfaces TypeScript corregidas
 interface ThemeToggleProps {
-  style?: any;
+  style?: ViewStyle; // ✅ Tipo específico en lugar de 'any'
   showLabel?: boolean;
   size?: 'small' | 'medium' | 'large';
+}
+
+interface SizeConfig {
+  width: number;
+  height: number;
+  buttonSize: number;
+  iconSize: number;
+  labelSize: number;
+}
+
+interface SizeConfigs {
+  small: SizeConfig;
+  medium: SizeConfig;
+  large: SizeConfig;
 }
 
 export const ThemeToggle: React.FC<ThemeToggleProps> = ({ 
@@ -18,14 +41,14 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   const translateX = useRef(new Animated.Value(isDarkMode ? 22 : 2)).current;
   const scale = useRef(new Animated.Value(1)).current;
 
-  // Configuraciones de tamaño
-  const sizeConfig = {
+  // 🔧 Configuraciones de tamaño con tipos explícitos
+  const sizeConfig: SizeConfigs = {
     small: { width: 44, height: 24, buttonSize: 20, iconSize: 12, labelSize: 14 },
     medium: { width: 52, height: 28, buttonSize: 24, iconSize: 16, labelSize: 16 },
     large: { width: 60, height: 32, buttonSize: 28, iconSize: 18, labelSize: 18 },
   };
 
-  const config = sizeConfig[size];
+  const config: SizeConfig = sizeConfig[size];
 
   useEffect(() => {
     Animated.spring(translateX, {
@@ -34,8 +57,9 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       tension: 200,
       friction: 8,
     }).start();
-  }, [isDarkMode, config.width, config.buttonSize]);
-  const handlePress = async () => {
+  }, [isDarkMode, config.width, config.buttonSize, translateX]);
+
+  const handlePress = async (): Promise<void> => { // ✅ Tipo de retorno explícito
     // Animación de scale para feedback visual
     Animated.sequence([
       Animated.timing(scale, {
@@ -52,16 +76,63 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
 
     toggleTheme();
   };
+
+  // 🔧 Estilos dinámicos con tipos explícitos
+  const containerStyles: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  };
+
+  const labelContainerStyles: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  };
+
+  const labelStyles: TextStyle = {
+    fontSize: config.labelSize,
+    fontWeight: '500',
+    marginLeft: 12,
+    color: theme.text,
+  };
+
+  const toggleContainerStyles: ViewStyle = {
+    width: config.width,
+    height: config.height,
+    borderRadius: config.height / 2,
+    padding: 2,
+    justifyContent: 'center',
+    borderWidth: 1,
+    backgroundColor: isDarkMode ? theme.primary : theme.border,
+    borderColor: theme.border || '#E0E0E0', // ✅ Fallback para evitar undefined
+  };
+
+  const toggleButtonStyles: ViewStyle = {
+    width: config.buttonSize,
+    height: config.buttonSize,
+    borderRadius: config.buttonSize / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.card,
+    shadowColor: isDarkMode ? theme.primary : '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 3,
+  };
   
   return (
-    <View style={[styles.container, style]}>
+    <View style={[containerStyles, style]}>
       {showLabel && (
-        <View style={styles.labelContainer}>
+        <View style={labelContainerStyles}>
           <MaterialIcons 
             name={isDarkMode ? "dark-mode" : "light-mode"} 
             size={config.iconSize + 4} 
             color={theme.text} 
-          />          <Text style={[styles.label, { color: theme.text, fontSize: config.labelSize }]}>
+          />
+          <Text style={labelStyles}>
             {isDarkMode ? 'Modo Oscuro' : 'Modo Claro'}
           </Text>
         </View>
@@ -69,27 +140,19 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       
       <Animated.View style={{ transform: [{ scale }] }}>
         <TouchableOpacity
-          style={[
-            styles.toggleContainer,
-            { 
-              width: config.width,
-              height: config.height,
-              backgroundColor: isDarkMode ? theme.primary : theme.border,
-              borderColor: theme.separator,
-            }
-          ]}
+          style={toggleContainerStyles}
           onPress={handlePress}
           activeOpacity={0.9}
+          accessible={true}
+          accessibilityLabel={`Cambiar a ${isDarkMode ? 'modo claro' : 'modo oscuro'}`}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: isDarkMode }}
         >
           <Animated.View
             style={[
-              styles.toggleButton,
+              toggleButtonStyles,
               {
-                width: config.buttonSize,
-                height: config.buttonSize,
-                backgroundColor: theme.card,
                 transform: [{ translateX }],
-                shadowColor: isDarkMode ? theme.primary : '#000',
               }
             ]}
           >
@@ -105,40 +168,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-  },
-  labelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginLeft: 12,
-  },
-  toggleContainer: {
-    width: 50,
-    height: 28,
-    borderRadius: 14,
-    padding: 2,
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  toggleButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-});
+// 🔧 Estilos estáticos removidos ya que usamos estilos dinámicos
+// Esto es más consistente con el sistema de temas
+
+export default ThemeToggle;
